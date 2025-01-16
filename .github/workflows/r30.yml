@@ -2,7 +2,7 @@ name: "30 Timeframe"
 
 on:
   schedule:
-    - cron: '0 7 * * *'
+    - cron: '0 10 * * *'
   push:
     branches:
       - master
