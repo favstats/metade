@@ -1,10 +1,6 @@
 name: "30 Timeframe"
 
 on:
-  push:
-    branches:
-      - master
-      - main
   schedule:
     - cron: '0 7 * * *'
 
@@ -152,10 +148,9 @@ jobs:
           # Load the persisted RESUME_COUNT from the environment
           echo "Using Resume Count: $RESUME_COUNT"
 
-
-          # Check if RESUME_COUNT is empty
-          if [ -z "$RESUME_COUNT" ]; then
-            echo "RESUME_COUNT is empty. Skipping commit and push."
+          # Check if RESUME_COUNT is empty or zero
+          if [ -z "$RESUME_COUNT" ] || [ "${RESUME_COUNT:-0}" -eq 0 ]; then
+            echo "RESUME_COUNT is empty or zero. Skipping commit and push."
             exit 0
           fi
 
@@ -167,7 +162,7 @@ jobs:
 
           # Check if a workflow with this specific TF is already running or queued
           echo "Checking for running or queued jobs for timeframe ${TF}..."
-          RUNNING_JOBS=$(jq -r --arg TF "${TF}" '.[] | select(.name | test(".*" + $TF + "\\s+TF.*"; "i")) | select(.status == "in_progress" or .status == "queued")' gh_run_list.json)
+          RUNNING_JOBS=$(jq -r --arg TF "${TF}" '.[] | select(.name == ($TF + " Timeframe")) | select(.status == "in_progress" or .status == "queued")' gh_run_list.json)
           
           # Log filtered jobs for verbosity
           if [ -z "$RUNNING_JOBS" ]; then
