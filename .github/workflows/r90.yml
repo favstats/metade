@@ -3,6 +3,10 @@ name: "90 Timeframe"
 on:
   schedule:
     - cron: '0 2 * * *'
+  push:
+    branches:
+      - master
+      - main
 
 jobs:
   update-data:
