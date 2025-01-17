@@ -11,7 +11,7 @@ try({
   if (Sys.info()[["effective_user"]] %in% c("fabio", "favstats")) {
     ### CHANGE ME WHEN LOCAL!
     tf <- "30"
-    the_cntry <- "HU"
+    the_cntry <- "DE"
     print(paste0("TF: ", tf))
     print(paste0("cntry: ", the_cntry))
     
@@ -84,6 +84,8 @@ try({
     set_names("page_id", "spend") %>% 
     mutate(spend = parse_number(spend)) %>% 
     arrange(desc(spend))
+  
+
   
   for (i in 1:length(togetstuff$page_id)) {
     # Get insights for the current page ID
@@ -369,13 +371,45 @@ try({
           
         })
         
+        library(dplyr)
+        
+        distinct_if <- function(data, ..., .keep_all = TRUE) {
+          # Capture column names as symbols
+          vars <- rlang::ensyms(...)
+          
+          # Filter for variables that exist in the dataset
+          present_vars <- vars[sapply(vars, function(x) rlang::as_string(x) %in% names(data))]
+          
+          # If no variables are present, return the data unchanged
+          if (length(present_vars) == 0) {
+            warning("None of the specified variables are present in the data. Returning the original data.")
+            return(data)
+          }
+          
+          # Apply distinct on the present variables
+          data %>%
+            distinct(across(all_of(sapply(present_vars, rlang::as_string))), .keep_all = .keep_all)
+        }
+        
+        # ones <- jb %>% 
+        #   mutate(id = 1:n()) %>% 
+        #   as_tibble() 
+        # 
+        # twos <- jb %>% 
+        #   mutate(id = 1:n()) %>% 
+        #   as_tibble() %>% 
+        #   distinct_if(page_id, total_num_ads, total_spend_formatted, is_exclusion,
+        #               value, type, detailed_type, custom_audience_type, location_type, .keep_all = T) 
+        # 
+        # ones %>% anti_join(twos %>% select(id)) %>% View()
+        # ones %>% View()
         election_dat  <- enddat %>%
           mutate_at(vars(contains("total_spend_formatted")), ~ parse_number(as.character(.x))) %>%
           # rename(page_id = internal_id) %>%
           left_join(all_dat) %>%
-          bind_rows(latest_elex %>% filter(!(page_id %in% enddat$page_id))) %>%
-          distinct(page_id, cntry, page_name, total_num_ads, total_spend_formatted, is_exclusion, 
-                   tf, value, type, detailed_type,.keep_all = T)
+          bind_rows(latest_elex %>% filter(!(page_id %in% enddat$page_id))) %>% 
+          distinct_if(page_id, total_num_ads, total_spend_formatted, is_exclusion,
+                      value, type, detailed_type, custom_audience_type, location_type, .keep_all = T) 
         
         dir.create(paste0("historic/",  as.character(new_ds)), recursive = T)
         
