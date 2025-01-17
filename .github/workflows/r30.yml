@@ -166,7 +166,7 @@ jobs:
 
           # Check if a workflow with this specific TF is already running or queued
           echo "Checking for running or queued jobs for timeframe ${TF}..."
-          RUNNING_JOBS=$(jq -r '.[] | select(.name | test(".*Resume\\s+${TF}\\s+TF.*"; "i")) | select(.status == "in_progress" or .status == "queued")' gh_run_list.json)
+          RUNNING_JOBS=$(jq -r --arg TF "${TF}" '.[] | select(.name | test(".*" + $TF + "\\s+TF.*"; "i")) | select(.status == "in_progress" or .status == "queued")' gh_run_list.json)
           
           # Log filtered jobs for verbosity
           if [ -z "$RUNNING_JOBS" ]; then
