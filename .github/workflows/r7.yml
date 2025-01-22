@@ -2,7 +2,7 @@ name: "7 Timeframe"
 
 on:
   schedule:
-    - cron: '0 5 * * *'
+    - cron: '0 6 * * *'
 
 jobs:
   update-data:
