@@ -1,10 +1,6 @@
 name: "7 Timeframe"
 
 on:
-  push:
-    branches:
-      - master
-      - main
   schedule:
     - cron: '0 3 * * *'
 
