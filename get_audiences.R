@@ -2,6 +2,13 @@ library(tidyverse)
 
 writeLines("INIT", "status.txt")  # Save status
 
+if_not_null <- function(x, expr, default = FALSE) {
+  if (!is.null(x)) {
+    return(eval(expr))
+  }
+  return(default)
+}
+
 
 # Define time frame values
 tf_values <- c("7", "30", "90")
@@ -111,7 +118,7 @@ for (i in seq_len(nrow(params))) {
       
       
       
-      for (i in 1:length(togetstuff$page_id)) {
+      for (i in seq_along(togetstuff$page_id)) {
         # Get insights for the current page ID
         jb <- get_page_insights(
           togetstuff$page_id[i], 
@@ -119,27 +126,36 @@ for (i in seq_len(nrow(params))) {
           include_info = "targeting_info"
         )
         
-        # Check if `jb` is not NULL
+        # Ensure `jb` is not NULL before proceeding
         if (!is.null(jb)) {
-          # print("is not null")
-          if(nrow(jb) == 0){
-            # print("but is zero")
+          
+          # If `jb` is empty, move to next iteration
+          if (nrow(jb) == 0) {
             next
-          } else {
-            # Extract the `new_ds` value
-            new_ds <- jb %>% 
-              arrange(ds) %>% 
-              slice(1) %>% 
-              pull(ds)
-            
-            # Break the loop if `new_ds` is successfully assigned
-            if (!is.null(new_ds)) {
-              # message("New `ds` found, breaking the loop.")
-              break
-            }
-            
+          } 
+          
+          # Check if API block occurred due to login issues
+          if (if_not_null(jb$error, str_detect(str_to_lower(jb$error), "log in"))) {
+            message("❌ API Block or No Data! Exiting early...")
+            writeLines("VPN_ROTATION_NEEDED", "status.txt")  # Save status
+            break  # Stop execution
+          } 
+          
+          # Extract `new_ds` value safely
+          new_ds <- jb %>% 
+            arrange(ds) %>% 
+            slice(1) %>% 
+            pull(ds)
+          
+          # If `new_ds` is valid, break loop
+          if (!is.null(new_ds)) {
+            break
           }
         } 
+      }
+      
+      if(readLines("status.txt")=="VPN_ROTATION_NEEDED"){
+        break
       }
       
       to_get <- latest %>%
