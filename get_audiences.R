@@ -309,9 +309,9 @@ for (i in seq_len(nrow(params))) {
           # get_targeting(internal$page_id, timeframe = glue::glue("LAST_{time}_DAYS")) %>%
           get_page_insights(internal$page_id, timeframe = glue::glue("LAST_{time}_DAYS"), include_info = "targeting_info", iso2c = the_cntry)
         
+        print(fin)
         if (nrow(fin) != 0) {
           if(!is.null(fin$error)){
-            print(fin)
             print("mmm")
             fin <- fin %>% 
               mutate(tstamp = tstamp)
