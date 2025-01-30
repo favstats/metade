@@ -21,7 +21,6 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
-
       - name: Ensure Docker is Running
         run: |
           sudo systemctl restart docker || echo "Docker restart failed"
