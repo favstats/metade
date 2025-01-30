@@ -836,7 +836,7 @@ get_page_insights <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en-GB"
     httr2::resp_body_html() %>%
     rvest::html_element("p") %>%
     rvest::html_text() %>%
-    str_split_1("(?<=\\})\\s*(?=\\{)") %>%
+    stringr::str_split_1("(?<=\\})\\s*(?=\\{)") %>%
     map(jsonlite::fromJSON)
   
   # Check for errors in response
@@ -940,7 +940,7 @@ get_page_insights <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en-GB"
                  "application/x-www-form-urlencoded") %>% req_perform()
   
   out <- resp %>% httr2::resp_body_html() %>% rvest::html_element("p") %>%
-    rvest::html_text() %>% str_split_1("(?<=\\})\\s*(?=\\{)") %>%
+    rvest::html_text() %>% stringr::str_split_1("(?<=\\})\\s*(?=\\{)") %>%
     map(jsonlite::fromJSON)
   
   # Check for errors in the response
