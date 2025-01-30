@@ -9,13 +9,13 @@ tf_values <- c("7", "30", "90")
 # Read and prepare country list
 eu_countries <- c("AT", "BE", "BG", "CY", "CZ", "DK", "EE", "ES", "FI", 
                   "FR", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", 
-                  "NL", "PL", "PT", "RO", "SE", "SI", "SK", "US", "NZ",  "MX",
-                  "CA", "AU","DE") %>% sample(32)
+                  "NL", "PL", "PT", "RO", "SE", "SI", "SK", "NZ",  "MX",
+                  "CA", "AU","DE") %>% sample(31)
 
 full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/main/cntry_list.rds") %>%
   rename(iso2c = iso2, country = cntry) %>%
   sample_n(n()) %>% 
-  mutate(iso2c = fct_relevel(iso2c, c(eu_countries))) %>% 
+  mutate(iso2c = fct_relevel(iso2c, c("US",eu_countries))) %>% 
   arrange(iso2c)
 
 # Create all combinations of TF and countries
@@ -310,7 +310,7 @@ for (i in seq_len(nrow(params))) {
 
           # }
         } else {
-          fin <- tibble(internal_id = internal$page_id, no_data = T, error = fin$error) %>%
+          fin <- tibble(internal_id = internal$page_id, no_data = T) %>%
             mutate(tstamp = tstamp)
         }
         
@@ -362,7 +362,17 @@ for (i in seq_len(nrow(params))) {
             return(NULL)  # Return NULL on failure
           })
           
-          if (stringr::str_detect(str_to_lower(the_error), "log in") | str_detect_safe(str_to_lower(result$error), "log in")) {
+          if_not_null <- function(x, expr, default = FALSE) {
+            if (!is.null(x)) {
+              return(eval(expr))
+            }
+            return(default)
+          }
+          
+          if (
+            if_not_null(the_error, str_detect(str_to_lower(the_error), "log in")) | 
+            if_not_null(result$error, str_detect(str_to_lower(result$error), "log in"))
+          ) {
             message("❌ API Block or No Data! Exiting early...")
             writeLines("VPN_ROTATION_NEEDED", "status.txt")  # Save status
             break  # Stop execution
