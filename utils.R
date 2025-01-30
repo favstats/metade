@@ -821,6 +821,7 @@ get_page_insights <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en-GB"
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36"
   )
+  
   ua <- sample(ua_list, 1)
   resp <- request("https://www.facebook.com/api/graphql/") %>%
     req_headers(`Accept-Language` = paste0(lang, ",", stringr::str_split(lang,
