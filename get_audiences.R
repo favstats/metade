@@ -6,7 +6,7 @@ tf_values <- c("7", "30", "90")
 # Read and prepare country list
 eu_countries <- c("AT", "BE", "BG", "CY", "CZ", "DK", "EE", "ES", "FI", 
                   "FR", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", 
-                  "NL", "PL", "PT", "RO", "SE", "SI", "SK", "US", "MX", "NZ", 
+                  "NL", "PL", "PT", "RO", "SE", "SI", "SK", "US", "NZ",  "MX",
                   "CA", "AU") %>% sample(31)
 
 full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/main/cntry_list.rds") %>%
