@@ -137,6 +137,7 @@ jobs:
         run: Rscript 'arrow.R'
 
       - name: Infinite Loop Until Success
+        continue-on-error: true  # <- NEW: Allows loop to continue even if VPN rotation is needed
         run: |
           while true; do
             echo "🚀 Running get_audiences.R..."
