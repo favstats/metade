@@ -24,10 +24,12 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
 
-      - name: Create R packages directory
+      - name: Create directories
         run: |
           sudo mkdir -p /github/home/r-libs
           sudo chmod 777 /github/home/r-libs
+          mkdir -p data historic targeting
+          chmod -R 777 .
 
       - name: Restore R Package Cache
         uses: actions/cache@v3
@@ -78,6 +80,8 @@ jobs:
             -e TELEGRAM_BOT_ID=${{ secrets.TELEGRAM_BOT_ID }} \
             -e TELEGRAM_GROUP_ID=${{ secrets.TELEGRAM_GROUP_ID }} \
             -v ${PWD}/data:/workspace/data \
+            -v ${PWD}/historic:/workspace/historic \
+            -v ${PWD}/targeting:/workspace/targeting \
             -v /github/home/r-libs:/r-libs \
             ghcr.io/${{ github.repository }}/r-scraper:latest tail -f /dev/null
 
