@@ -1,5 +1,8 @@
 FROM rocker/tidyverse:4.1.2
 
+WORKDIR /workspace
+
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -35,3 +38,7 @@ RUN install2.r --error \
     piggyback \
     openssl \
     arrow
+
+# Copy your R scripts into the image
+COPY *.R /workspace/
+COPY data /workspace/data

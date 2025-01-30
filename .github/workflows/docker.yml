@@ -77,7 +77,7 @@ jobs:
             -e GITHUB_PAT=${{ secrets.GH_PAT }} \
             -e TELEGRAM_BOT_ID=${{ secrets.TELEGRAM_BOT_ID }} \
             -e TELEGRAM_GROUP_ID=${{ secrets.TELEGRAM_GROUP_ID }} \
-            -v ${PWD}:/workspace \
+            -v ${PWD}/data:/workspace/data \
             -v /github/home/r-libs:/r-libs \
             ghcr.io/${{ github.repository }}/r-scraper:latest tail -f /dev/null
 

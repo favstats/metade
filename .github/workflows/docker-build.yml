@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - 'Dockerfile'
+      - '*.R'
+      - 'data/**'
   workflow_dispatch:
 
 jobs:
