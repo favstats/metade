@@ -109,41 +109,15 @@ jobs:
           FROM rocker/r-ver:4.1.2
 
           RUN apt-get update && apt-get install -y \
+              git \
+              curl \
               libssl-dev \
               libcurl4-openssl-dev \
               libxml2-dev \
               libharfbuzz-dev \
               libfribidi-dev \
               libudunits2-dev \
-              libgdal-dev \
-              libgeos-dev \
-              git \
-              libfontconfig1-dev \
-              libcairo2-dev \
-              curl \
-              libproj-dev \
-              gdal-bin \
-              libnode-dev \
-              libcairo2-dev \
-              libgeos-dev \
-              libproj-dev \
-              libfontconfig1-dev \
-              libudunits2-0 \
-              libharfbuzz-dev \
-              libfribidi-dev \
-              libfreetype6-dev \
-              libpng-dev \
-              libtiff5-dev \
-              libjpeg-dev \
-              default-libmysqlclient-dev \
-              libpq-dev \
-              unixodbc-dev \
-              libsqlite3-dev \
-              libsasl2-dev \
-              libpcre2-dev \
-              libpcre3-dev \
-              libicu-dev \
-              libv8-dev
+              libgdal-dev
 
           WORKDIR /workspace
 
@@ -154,18 +128,12 @@ jobs:
               "remotes", \
               "shiny", \
               "scales", \
-              "treemap", \
               "here", \
               "jsonlite", \
               "janitor", \
-              "quarto", \
-              "highcharter", \
               "lubridate", \
-              "gt", \
-              "gtExtras", \
               "pacman", \
               "openxlsx", \
-              "sf", \
               "xml2", \
               "rvest", \
               "reticulate", \
@@ -181,7 +149,6 @@ jobs:
               "piggyback", \
               "httr2", \
               "openssl", \
-              "priceR", \
               "arrow" \
           ), repos="https://cloud.r-project.org", dependencies=TRUE)'
 
@@ -323,11 +290,3 @@ jobs:
               sleep 30
             fi
           done
-
-      - name: Commit and Push Changes
-        run: |
-          git config --global user.name 'GitHub Actions Bot'
-          git config --global user.email 'actions@github.com'
-          git add .
-          git commit -m "Update data and status" || echo "No changes to commit"
-          git push
