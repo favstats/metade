@@ -146,6 +146,8 @@ jobs:
 
       - name: Infinite Loop Until Success
         run: |
+          PREV_IP=""
+
           while true; do
             echo "🚀 Running get_audiences.R..."
             Rscript 'get_audiences.R'
@@ -159,7 +161,13 @@ jobs:
               # Fetch list of available countries
               echo "🌍 Fetching available NordVPN countries..."
               docker exec nordvpn nordvpn countries > countries.txt
-              countries=($(grep -oE "[A-Za-z ]+" countries.txt | tail -n +2))
+              countries=($(grep -oE "[A-Za-z ]+" countries.txt | tail -n +2 | grep -vE "available|NordVPN"))  # Remove invalid entries
+
+              if [ "${#countries[@]}" -eq 0 ]; then
+                echo "❌ No valid countries found! Retrying in 10 seconds..."
+                sleep 10
+                continue
+              fi
 
               while true; do
                 # Select a random country
@@ -174,12 +182,13 @@ jobs:
                 NEW_IP=$(curl -s ifconfig.me)
 
                 # If the IP is different, continue execution
-                if [ "$NEW_IP" != "$PREV_IP" ]; then
+                if [ "$NEW_IP" != "$PREV_IP" ] && [ -n "$NEW_IP" ]; then
                   echo "✅ IP successfully changed! New IP: $NEW_IP"
                   PREV_IP=$NEW_IP
                   break
                 else
                   echo "❌ IP did not change. Trying another country..."
+                  sleep 5
                 fi
               done
 
