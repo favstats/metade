@@ -11,7 +11,6 @@ jobs:
   update-data:
     runs-on: ubuntu-latest
     env:
-      TF: "30"  # Timeframe variable
       GITHUB_PAT: ${{ secrets.GH_PAT }}      
       TELEGRAM_BOT_ID: ${{ secrets.TELEGRAM_BOT_ID }}
       TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID }}
@@ -137,23 +136,23 @@ jobs:
         run: Rscript 'arrow.R'
 
       - name: Infinite Loop Until Success
-        continue-on-error: true  # <- NEW: Allows loop to continue even if VPN rotation is needed
         run: |
           while true; do
             echo "🚀 Running get_audiences.R..."
-            Rscript 'get_audiences.R' ${TF} "DE"
+            Rscript 'get_audiences.R' 
             EXIT_CODE=$?
-            
-            if [ "$EXIT_CODE" -eq 0 ]; then
-              echo "✅ Script ran successfully! Exiting loop."
-              break
-            elif [ "$EXIT_CODE" -eq 42 ]; then
+
+            if [ -f status.txt ] && grep -q "VPN_ROTATION_NEEDED" status.txt; then
               echo "🔄 VPN Rotation Needed! Restarting VPN..."
               docker exec nordvpn nordvpn disconnect
               sleep 5
               docker exec nordvpn nordvpn connect
               sleep 10  # Give time for VPN to reconnect
               echo "🔄 Retrying get_audiences.R after VPN change..."
+              rm status.txt  # Reset status after handling
+            elif [ "$EXIT_CODE" -eq 0 ]; then
+              echo "✅ Script ran successfully! Exiting loop."
+              break
             else
               echo "❌ Unexpected error: $EXIT_CODE. Retrying in 30 seconds..."
               sleep 30
