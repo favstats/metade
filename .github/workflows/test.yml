@@ -1,11 +1,12 @@
-name: VPN Rotation on Push
+name: VPN Rotation and Data Update
 
 on:
   push:
     branches:
-      - main  # Runs only when pushing to main
+      - main
   schedule:
     - cron: '0 8 * * *'  # Runs every day at 08:00 UTC
+  workflow_dispatch:
 
 jobs:
   update-data:
@@ -22,6 +23,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
 
+      # Set up R and dependencies first
       - name: Restore R Package Cache
         uses: actions/cache@v3
         with:
@@ -30,57 +32,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-r-packages-
 
-      - name: Ensure Docker is Running
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+
+      - name: Install System Dependencies
         run: |
-          sudo systemctl restart docker || echo "Docker restart failed"
-          sudo docker info || echo "Docker is not running!"
-
-      - name: Run NordVPN Container with Random Country
-        env:
-          NORDVPN_TOKEN: ${{ secrets.NORDVPN_TOKEN }}
-        run: |
-          # Define a list of available countries
-          COUNTRIES=("United_States" "Canada" "Germany" "France" "Netherlands" "Australia" "Japan" "Sweden" "Spain")
-      
-          # Pick a random country from the list
-          RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
-      
-          echo "Selected VPN Country: $RANDOM_COUNTRY"
-      
-          # Start NordVPN Docker container with the selected random country
-          docker run -d --name nordvpn --cap-add=NET_ADMIN --cap-add=NET_RAW \
-            -e TOKEN=$NORDVPN_TOKEN \
-            -e CONNECT=$RANDOM_COUNTRY \
-            -e TECHNOLOGY=NordLynx \
-            ghcr.io/bubuntux/nordvpn
-
-      - name: Wait for VPN to Establish
-        run: |
-          for i in {1..10}; do
-            VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
-            echo "VPN Status Output: $VPN_STATUS"
-
-            if echo "$VPN_STATUS" | grep -q "Connected"; then
-              echo "✅ VPN Connected!"
-              break
-            fi
-
-            echo "⏳ Waiting for VPN... Attempt $i/10"
-            sleep 3
-          done
-
-          # Final Check: Fail if VPN never connected
-          VPN_STATUS_FINAL=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
-          if ! echo "$VPN_STATUS_FINAL" | grep -q "Connected"; then
-            echo "❌ VPN failed to connect after 10 attempts."
-            exit 1
-          fi
-
-      - name: Apt-get update things
-        run: sudo apt-get update 
-
-      - name: Apt-get needed things
-        run: |
+          sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
           libssl-dev \
           libcurl4-openssl-dev \
@@ -89,11 +48,6 @@ jobs:
           libfribidi-dev \
           libudunits2-dev \
           libgdal-dev
-
-      - name: Setup R
-        uses: r-lib/actions/setup-r@v2
-        with:
-          r-version: 'release'
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -141,51 +95,111 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-arrow-
 
-      - name: "Install arrow"
+      - name: Install arrow
         run: Rscript 'arrow.R'
+
+      # Now set up VPN and run everything through it
+      - name: Ensure Docker is Running
+        run: |
+          sudo systemctl restart docker || echo "Docker restart failed"
+          sudo docker info || echo "Docker is not running!"
+
+      - name: Run NordVPN Container
+        env:
+          NORDVPN_TOKEN: ${{ secrets.NORDVPN_TOKEN }}
+        run: |
+          COUNTRIES=("United_States" "Canada" "Germany" "France" "Netherlands" "Australia" "Japan" "Sweden" "Spain")
+          RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
+          echo "Selected VPN Country: $RANDOM_COUNTRY"
+          
+          docker run -d --name nordvpn \
+            --cap-add=NET_ADMIN \
+            --cap-add=NET_RAW \
+            -v $PWD:/workspace \
+            -w /workspace \
+            -e TOKEN=$NORDVPN_TOKEN \
+            -e CONNECT=$RANDOM_COUNTRY \
+            -e TECHNOLOGY=NordLynx \
+            -e GITHUB_PAT=${{ secrets.GH_PAT }} \
+            -e TELEGRAM_BOT_ID=${{ secrets.TELEGRAM_BOT_ID }} \
+            -e TELEGRAM_GROUP_ID=${{ secrets.TELEGRAM_GROUP_ID }} \
+            ghcr.io/bubuntux/nordvpn
+
+      - name: Wait for VPN to Establish
+        run: |
+          for i in {1..10}; do
+            VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
+            echo "VPN Status Output: $VPN_STATUS"
+
+            if echo "$VPN_STATUS" | grep -q "Connected"; then
+              echo "✅ VPN Connected!"
+              break
+            fi
+
+            echo "⏳ Waiting for VPN... Attempt $i/10"
+            sleep 3
+          done
+
+          VPN_STATUS_FINAL=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
+          if ! echo "$VPN_STATUS_FINAL" | grep -q "Connected"; then
+            echo "❌ VPN failed to connect after 10 attempts."
+            exit 1
+          fi
+
+      - name: Copy R environment into container
+        run: |
+          docker exec nordvpn apt-get update
+          docker exec nordvpn apt-get install -y r-base libssl-dev libcurl4-openssl-dev libxml2-dev libharfbuzz-dev libfribidi-dev libudunits2-dev libgdal-dev
+          docker cp ~/.cache/R nordvpn:/root/.cache/
+          docker cp ~/.local/share/R nordvpn:/root/.local/share/
+          docker cp ~/.R nordvpn:/root/
 
       - name: Infinite Loop Until Success
         run: |
-          # Function to get the current IP (more reliable)
           get_current_ip() { 
-            dig +short myip.opendns.com @resolver1.opendns.com || curl -s ifconfig.me || echo "UNKNOWN"; 
+            docker exec nordvpn curl -s ifconfig.me || echo "UNKNOWN"
           }
       
-          # Predefined list of valid NordVPN countries
-          COUNTRIES=("United_States" "Canada" "Germany" "France" "Netherlands" "Australia" "Japan" "Sweden" "Spain")
-      
-          # Store the initial IP
           PREV_IP=$(get_current_ip)
           echo "🌍 Initial IP: $PREV_IP"
       
           while true; do
             echo "🚀 Running get_audiences.R..."
-            Rscript 'get_audiences.R'
+            docker exec nordvpn Rscript get_audiences.R
             EXIT_CODE=$?
       
-            # Check if VPN rotation is needed
             if [ -f status.txt ] && grep -q "VPN_ROTATION_NEEDED" status.txt; then
               echo "🔄 VPN Rotation Needed! Restarting VPN..."
               
-              # Stop and remove the existing NordVPN container
-              docker stop nordvpn || true
-              docker rm nordvpn || true
+              docker stop nordvpn
+              docker rm nordvpn
       
-              # Select a random country from the list
+              COUNTRIES=("United_States" "Canada" "Germany" "France" "Netherlands" "Australia" "Japan" "Sweden" "Spain")
               RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
               echo "🌍 Selected VPN Country: $RANDOM_COUNTRY"
       
-              # Start a fresh NordVPN container with a random country
-              docker run -d --name nordvpn --cap-add=NET_ADMIN --cap-add=NET_RAW \
+              docker run -d --name nordvpn \
+                --cap-add=NET_ADMIN \
+                --cap-add=NET_RAW \
+                -v $PWD:/workspace \
+                -w /workspace \
                 -e TOKEN=$NORDVPN_TOKEN \
                 -e CONNECT=$RANDOM_COUNTRY \
                 -e TECHNOLOGY=NordLynx \
+                -e GITHUB_PAT=${{ secrets.GH_PAT }} \
+                -e TELEGRAM_BOT_ID=${{ secrets.TELEGRAM_BOT_ID }} \
+                -e TELEGRAM_GROUP_ID=${{ secrets.TELEGRAM_GROUP_ID }} \
                 ghcr.io/bubuntux/nordvpn
       
-              # Wait for VPN to establish a connection
               sleep 15
       
-              # Verify that the IP has changed
+              # Copy R environment again after container recreation
+              docker exec nordvpn apt-get update
+              docker exec nordvpn apt-get install -y r-base libssl-dev libcurl4-openssl-dev libxml2-dev libharfbuzz-dev libfribidi-dev libudunits2-dev libgdal-dev
+              docker cp ~/.cache/R nordvpn:/root/.cache/
+              docker cp ~/.local/share/R nordvpn:/root/.local/share/
+              docker cp ~/.R nordvpn:/root/
+      
               NEW_IP=$(get_current_ip)
               echo "🔎 New IP: $NEW_IP"
       
@@ -195,10 +209,11 @@ jobs:
               else
                 echo "❌ IP did not change. Retrying with another country..."
                 sleep 5
+                continue
               fi
       
               echo "🔄 Retrying get_audiences.R after VPN change..."
-              rm status.txt  # Reset status after handling
+              rm status.txt
       
             elif [ "$EXIT_CODE" -eq 0 ]; then
               echo "✅ Script ran successfully! Exiting loop."
@@ -207,4 +222,12 @@ jobs:
               echo "❌ Unexpected error: $EXIT_CODE. Retrying in 30 seconds..."
               sleep 30
             fi
-          done      
+          done
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name 'GitHub Actions Bot'
+          git config --global user.email 'actions@github.com'
+          git add .
+          git commit -m "Update data and status" || echo "No changes to commit"
+          git push
