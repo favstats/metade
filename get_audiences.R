@@ -309,7 +309,7 @@ for (i in seq_len(nrow(params))) {
           # get_targeting(internal$page_id, timeframe = glue::glue("LAST_{time}_DAYS")) %>%
           get_page_insights(internal$page_id, timeframe = glue::glue("LAST_{time}_DAYS"), include_info = "targeting_info", iso2c = the_cntry)
         
-        print(fin)
+        # print(fin)
         if (nrow(fin) != 0) {
           if(is.null(fin$error)){
             # print("mmm")
@@ -341,7 +341,7 @@ for (i in seq_len(nrow(params))) {
         
         # if (Sys.info()[["effective_user"]] %in% c("fabio", "favstats")) {
         ### CHANGE ME WHEN LOCAL!
-        # print(nrow(fin))
+        print(nrow(fin))
         
         # }# 
         # })
