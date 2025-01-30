@@ -35,13 +35,22 @@ jobs:
           sudo systemctl restart docker || echo "Docker restart failed"
           sudo docker info || echo "Docker is not running!"
 
-      - name: Run NordVPN Container
+      - name: Run NordVPN Container with Random Country
         env:
           NORDVPN_TOKEN: ${{ secrets.NORDVPN_TOKEN }}
         run: |
+          # Define a list of available countries
+          COUNTRIES=("United_States" "Canada" "Germany" "France" "Netherlands" "Australia" "Japan" "Sweden" "Spain")
+      
+          # Pick a random country from the list
+          RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
+      
+          echo "Selected VPN Country: $RANDOM_COUNTRY"
+      
+          # Start NordVPN Docker container with the selected random country
           docker run -d --name nordvpn --cap-add=NET_ADMIN --cap-add=NET_RAW \
             -e TOKEN=$NORDVPN_TOKEN \
-            -e CONNECT=United_States \
+            -e CONNECT=$RANDOM_COUNTRY \
             -e TECHNOLOGY=NordLynx \
             ghcr.io/bubuntux/nordvpn
 
