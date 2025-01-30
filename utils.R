@@ -795,42 +795,85 @@ get_page_insights <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en-GB"
                               iso2c = "US", include_info = c("page_info", "targeting_info"),
                               join_info = T, max_consecutive_errors = 1, local = T) 
 {
-  # Terminate R session if the maximum error count is reached
-  # Check if error count reached the threshold
+  # Ensure global error counter exists
+  if (!exists("consecutive_error_count", envir = .GlobalEnv)) {
+    assign("consecutive_error_count", 0, envir = .GlobalEnv)
+  }
+  
+  # Get current error count
   consecutive_error_count <- get("consecutive_error_count", envir = .GlobalEnv)
-  if(local){
-    if (consecutive_error_count >= max_consecutive_errors) {
-      message("🔄 Max consecutive errors reached. Rotating VPN...")
-      
-      # Capture initial public IP
-      initial_ip <- system("curl -s ifconfig.me", intern = TRUE)
-      message(glue::glue("🌍 Initial Public IP: {initial_ip}"))
-      
-      # Rotate VPN (Reconnect to a different server)
-      system("docker exec nordvpn nordvpn disconnect", intern = TRUE)
-      Sys.sleep(5)  # Wait before reconnecting
-      system("docker exec nordvpn nordvpn connect", intern = TRUE)
-      Sys.sleep(10)  # Wait for VPN to establish
-      
-      # Capture new public IP
-      new_ip <- system("curl -s ifconfig.me", intern = TRUE)
-      message(glue::glue("🌎 New Public IP: {new_ip}"))
-      
-      # Reset error counter after switching VPN
-      assign("consecutive_error_count", 0, envir = .GlobalEnv)
-      
-      # Verify that the IP actually changed
-      if (initial_ip == new_ip) {
-        message("❌ VPN Rotation Failed: IP did not change.")
-      } else {
-        message("✅ VPN Rotation Successful: IP changed!")
+  
+  if (local && consecutive_error_count >= max_consecutive_errors) {
+    message("🔄 Max consecutive errors reached. Rotating VPN...")
+    
+    # **Get the list of available countries**
+    available_countries <- system("docker exec nordvpn nordvpn countries", intern = TRUE)
+    available_countries <- strsplit(available_countries, "\n")[[1]]
+    available_countries <- available_countries[nchar(available_countries) > 1]  # Remove empty lines
+    
+    # **Select a random country**
+    if (length(available_countries) > 0) {
+      selected_country <- sample(available_countries, 1)
+    } else {
+      selected_country <- "United States"  # Default if the list is empty
+    }
+    
+    message(glue::glue("🌍 Selected Random Country: {selected_country}"))
+    
+    # Capture initial public IP
+    initial_ip <- system("curl -s ifconfig.me", intern = TRUE)
+    message(glue::glue("🌍 Initial Public IP: {initial_ip}"))
+    
+    # **Debugging VPN Connection Status**
+    vpn_status_before <- system("docker exec nordvpn nordvpn status", intern = TRUE)
+    message(glue::glue("🔍 VPN Status Before Rotation: {vpn_status_before}"))
+    
+    # **Force Disconnect**
+    message("🚨 Disconnecting VPN...")
+    system("docker exec nordvpn nordvpn disconnect", intern = TRUE)
+    Sys.sleep(5)  # Wait for disconnection
+    
+    # **Ensure VPN is fully disconnected before reconnecting**
+    for (i in 1:5) {
+      vpn_status <- system("docker exec nordvpn nordvpn status", intern = TRUE)
+      if (!grepl("Connected", vpn_status)) {
+        message("✅ VPN is fully disconnected.")
+        break
       }
-      
-    } 
-  } else if(consecutive_error_count >= max_consecutive_errors & !local) {
-    # message("Max consecutive errors reached. Exiting session.")
+      message("⏳ Waiting for full disconnect... Attempt ", i, "/5")
+      Sys.sleep(3)
+    }
+    
+    # **Reconnect to a Random Country**
+    message(glue::glue("🚀 Connecting to VPN in {selected_country}..."))
+    system(glue::glue("docker exec nordvpn nordvpn connect {selected_country}"), intern = TRUE)
+    Sys.sleep(10)  # Wait for VPN to establish
+    
+    # **Check VPN Status After Reconnect**
+    vpn_status_after <- system("docker exec nordvpn nordvpn status", intern = TRUE)
+    message(glue::glue("🔍 VPN Status After Rotation: {vpn_status_after}"))
+    
+    # **Ensure the IP cache is cleared before fetching new IP**
+    Sys.sleep(5)
+    system("sudo systemctl restart networking", intern = TRUE)  # Reset network
+    
+    # **Capture new public IP**
+    new_ip <- system("curl -s ifconfig.me", intern = TRUE)
+    message(glue::glue("🌎 New Public IP: {new_ip}"))
+    
+    # **Reset error counter after switching VPN**
+    assign("consecutive_error_count", 0, envir = .GlobalEnv)
+    
+    # **Verify that the IP actually changed**
+    if (initial_ip == new_ip) {
+      message("❌ VPN Rotation Failed: IP did not change.")
+    } else {
+      message("✅ VPN Rotation Successful: IP changed to {selected_country}!")
+    }
+  } else if (consecutive_error_count >= max_consecutive_errors & !local) {
     return(tibble())
   }
+}
   
   ua_list <- c("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36",
