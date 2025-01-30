@@ -390,18 +390,24 @@ for (i in seq_len(nrow(params))) {
             if_not_null(the_error, str_detect(str_to_lower(the_error), "log in")) | 
             if_not_null(result$error, str_detect(str_to_lower(result$error), "log in"))
           ) {
-            message("❌ API Block or No Data! Exiting early...")
+            message("❌ API Block! Exiting early...")
             writeLines("VPN_ROTATION_NEEDED", "status.txt")  # Save status
             break  # Stop execution
           }
           
+          print(paste0("imagine: ", nrow(result)))
+          
+          
           results[[length(results) + 1]] <- result  # Store successful result
         }
+        
         
         results <<- results
         # Bind results with `mutate_all(as.character)` to avoid inconsistent types
         if (length(results) > 0) {
-          final_result <- bind_rows(results) %>% mutate_all(as.character)
+          final_result <- bind_rows(results) %>% mutate_all(as.character)        
+          
+
           return(final_result)
         } else {
           return(tibble())  # Return empty tibble if no data
