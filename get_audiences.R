@@ -340,6 +340,7 @@ for (i in seq_len(nrow(params))) {
           #     print(paste0(internal$page_name, ": ", round(which(scrape_dat$page_id == internal$page_id)/nrow(scrape_dat) * 100, 2), "% complete"))
           #   }
           # })
+          the_error <- "no error"
           
           result <- tryCatch({
             # Call scraper function
