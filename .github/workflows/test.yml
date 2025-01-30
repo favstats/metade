@@ -148,17 +148,44 @@ jobs:
         run: |
           while true; do
             echo "🚀 Running get_audiences.R..."
-            Rscript 'get_audiences.R' 
+            Rscript 'get_audiences.R'
             EXIT_CODE=$?
 
             if [ -f status.txt ] && grep -q "VPN_ROTATION_NEEDED" status.txt; then
               echo "🔄 VPN Rotation Needed! Restarting VPN..."
               docker exec nordvpn nordvpn disconnect
               sleep 5
-              docker exec nordvpn nordvpn connect
-              sleep 10  # Give time for VPN to reconnect
+
+              # Fetch list of available countries
+              echo "🌍 Fetching available NordVPN countries..."
+              docker exec nordvpn nordvpn countries > countries.txt
+              countries=($(grep -oE "[A-Za-z ]+" countries.txt | tail -n +2))
+
+              while true; do
+                # Select a random country
+                RANDOM_COUNTRY=${countries[$RANDOM % ${#countries[@]}]}
+                echo "🌍 Attempting to connect to NordVPN server in: $RANDOM_COUNTRY"
+
+                # Connect to selected country
+                docker exec nordvpn nordvpn connect "$RANDOM_COUNTRY"
+                sleep 10  # Wait for VPN to connect
+
+                # Get new IP address
+                NEW_IP=$(curl -s ifconfig.me)
+
+                # If the IP is different, continue execution
+                if [ "$NEW_IP" != "$PREV_IP" ]; then
+                  echo "✅ IP successfully changed! New IP: $NEW_IP"
+                  PREV_IP=$NEW_IP
+                  break
+                else
+                  echo "❌ IP did not change. Trying another country..."
+                fi
+              done
+
               echo "🔄 Retrying get_audiences.R after VPN change..."
               rm status.txt  # Reset status after handling
+
             elif [ "$EXIT_CODE" -eq 0 ]; then
               echo "✅ Script ran successfully! Exiting loop."
               break
