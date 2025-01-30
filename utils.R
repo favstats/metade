@@ -908,7 +908,7 @@ get_page_insights <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en-GB"
   return(final_data)
 }
 
-get_page_insights_old <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en-GB",
+get_page_insights <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en-GB",
                               iso2c = "US", include_info = c("page_info", "targeting_info"),
                               join_info = T, max_consecutive_errors = 3, local = T) 
 {
@@ -945,6 +945,7 @@ get_page_insights_old <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en
   
   # Check for errors in the response
   if (!is.null(out[[1]][["errors"]][["description"]])) {
+    print("aa")
     # Increment global error counter
     consecutive_error_count <- get("consecutive_error_count", envir = .GlobalEnv)
     consecutive_error_count <- consecutive_error_count + 1
@@ -963,6 +964,8 @@ get_page_insights_old <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en
   assign("consecutive_error_count", 0, envir = .GlobalEnv)
   
   if ("page_info" %in% include_info) {
+    print("bbb")
+    
     page_info1 <- out[[1]][["data"]][["ad_library_page_info"]][["page_info"]]
     if (is.null(page_info1)) {
       if ("page_info" %in% include_info & "targeting_info" %in%
@@ -971,12 +974,16 @@ get_page_insights_old <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en
           return(tibble(page_id = pageid, no_data = T))
         }
         else {
+          print("cccc")
+          
           return(list(page_info = tibble(page_id = pageid,
                                          no_data = T), targeting_info = tibble(page_id = pageid,
                                                                                no_data = T)))
         }
       }
       else {
+        print("dddd")
+        
         return(tibble(page_id = pageid, no_data = T))
       }
     }
