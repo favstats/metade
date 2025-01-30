@@ -17,12 +17,13 @@ tf_values <- c("7", "30", "90")
 eu_countries <- c("AT", "BE", "BG", "CY", "CZ", "DK", "EE", "ES", "FI", 
                   "FR", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", 
                   "NL", "PL", "PT", "RO", "SE", "SI", "SK", "NZ",  "MX",
-                  "CA", "AU","DE") %>% sample(31)
+                  "CA", "AU","DE", "US") %>% sample(32)
 
 full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/main/cntry_list.rds") %>%
   rename(iso2c = iso2, country = cntry) %>%
   sample_n(n()) %>% 
-  mutate(iso2c = fct_relevel(iso2c, c("US",eu_countries))) %>% 
+  mutate(iso2c = fct_relevel(iso2c, c(eu_countries))) %>% 
+  filter(iso2c == "US") %>% 
   arrange(iso2c)
 
 # Create all combinations of TF and countries
