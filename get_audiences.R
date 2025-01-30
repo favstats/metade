@@ -299,8 +299,9 @@ for (i in seq_len(nrow(params))) {
       
       scraper <- function(internal, time = tf) {
         # try({
-          
-
+        
+        # debugonce(get_page_insights)  
+        # get_page_insights("106359662726593")
           
         
         # if(is.null(fin$error)){
