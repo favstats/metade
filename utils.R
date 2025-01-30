@@ -793,7 +793,7 @@ if (!exists("consecutive_error_count", envir = .GlobalEnv)) {
 
 get_page_insights <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en-GB",
                               iso2c = "US", include_info = c("page_info", "targeting_info"),
-                              join_info = T, max_consecutive_errors = 5, local = F) 
+                              join_info = T, max_consecutive_errors = 1, local = T) 
 {
   # Terminate R session if the maximum error count is reached
   # Check if error count reached the threshold

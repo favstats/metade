@@ -6,8 +6,8 @@ tf_values <- c("7", "30", "90")
 # Read and prepare country list
 eu_countries <- c("DE","AT", "BE", "BG", "CY", "CZ", "DK", "EE", "ES", "FI", 
                   "FR", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", 
-                  "NL", "PL", "PT", "RO", "SE", "SI", "SK", "US", "MX", "NZ", 
-                  "CA", "AU")
+                  "NL", "PL", "PT", "RO", "SE", "SI", "SK", "MX", "NZ", 
+                  "CA", "AU", "US")
 
 full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/main/cntry_list.rds") %>%
   rename(iso2c = iso2, country = cntry) %>%
@@ -16,7 +16,7 @@ full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/mai
   arrange(iso2c)
 
 # Create all combinations of TF and countries
-params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c)
+params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry)
 
 # Apply function using walk2()
 walk2(params$tf, params$the_cntry, ~{
