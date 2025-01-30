@@ -146,8 +146,30 @@ jobs:
 
       - name: Infinite Loop Until Success
         run: |
-          # Function to get the current IP address
+          # Function to get the current IP
           get_current_ip() { curl -s ifconfig.me || echo "UNKNOWN"; }
+
+          # Predefined list of valid NordVPN countries
+          COUNTRIES=("Albania" "Algeria" "Andorra" "Angola" "Argentina" "Armenia" "Australia"
+                     "Austria" "Azerbaijan" "Bahamas" "Bahrain" "Bangladesh" "Belgium"
+                     "Belize" "Bermuda" "Bhutan" "Bolivia" "Bosnia_And_Herzegovina" "Brazil"
+                     "Brunei_Darussalam" "Bulgaria" "Cambodia" "Canada" "Cayman_Islands" "Chile"
+                     "Colombia" "Costa_Rica" "Croatia" "Cyprus" "Czech_Republic" "Denmark"
+                     "Dominican_Republic" "Ecuador" "Egypt" "El_Salvador" "Estonia" "Finland"
+                     "France" "Georgia" "Germany" "Ghana" "Greece" "Greenland" "Guam"
+                     "Guatemala" "Honduras" "Hong_Kong" "Hungary" "Iceland" "India" "Indonesia"
+                     "Ireland" "Isle_Of_Man" "Israel" "Italy" "Jamaica" "Japan" "Jersey"
+                     "Jordan" "Kazakhstan" "Kenya" "Kuwait" "Lao_Peoples_Democratic_Republic"
+                     "Latvia" "Lebanon" "Liechtenstein" "Lithuania" "Luxembourg" "Malaysia"
+                     "Malta" "Mexico" "Moldova" "Monaco" "Mongolia" "Montenegro" "Morocco"
+                     "Mozambique" "Myanmar" "Nepal" "Netherlands" "New_Zealand" "Nigeria"
+                     "North_Macedonia" "Norway" "Pakistan" "Panama" "Papua_New_Guinea"
+                     "Paraguay" "Peru" "Philippines" "Poland" "Portugal" "Puerto_Rico"
+                     "Romania" "Senegal" "Serbia" "Singapore" "Slovakia" "Slovenia"
+                     "South_Africa" "South_Korea" "Spain" "Sri_Lanka" "Sweden" "Switzerland"
+                     "Taiwan" "Thailand" "Trinidad_And_Tobago" "Tunisia" "Turkey" "Ukraine"
+                     "United_Arab_Emirates" "United_Kingdom" "United_States" "Uruguay"
+                     "Uzbekistan" "Venezuela" "Vietnam")
 
           # Store the initial IP
           PREV_IP=$(get_current_ip)
@@ -164,22 +186,8 @@ jobs:
               docker exec nordvpn nordvpn disconnect
               sleep 5
 
-              # Get a list of available NordVPN countries
-              echo "🌍 Fetching available NordVPN countries..."
-              docker exec nordvpn nordvpn countries | grep -E '^[A-Za-z ]+$' > countries.txt
-
-              # Read countries into an array
-              mapfile -t countries < countries.txt
-
-              # If no valid countries are found, wait and retry
-              if [ "${#countries[@]}" -eq 0 ]; then
-                echo "❌ No valid countries found! Retrying in 10 seconds..."
-                sleep 10
-                continue
-              fi
-
-              # Try connecting to a random country until IP changes
-              for RANDOM_COUNTRY in "${countries[@]}"; do
+              # Shuffle countries and try connecting until IP changes
+              for RANDOM_COUNTRY in $(shuf -e "${COUNTRIES[@]}"); do
                 echo "🌍 Trying to connect to: $RANDOM_COUNTRY"
                 docker exec nordvpn nordvpn connect "$RANDOM_COUNTRY"
                 sleep 10  # Wait for connection
