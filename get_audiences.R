@@ -7,7 +7,7 @@ tf_values <- c("7", "30", "90")
 eu_countries <- c("AT", "BE", "BG", "CY", "CZ", "DK", "EE", "ES", "FI", 
                   "FR", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", 
                   "NL", "PL", "PT", "RO", "SE", "SI", "SK", "US", "MX", "NZ", 
-                  "CA", "AU") %>% sample(32)
+                  "CA", "AU") %>% sample(31)
 
 full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/main/cntry_list.rds") %>%
   rename(iso2c = iso2, country = cntry) %>%
