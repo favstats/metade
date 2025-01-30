@@ -809,7 +809,7 @@ get_page_insights <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en-GB"
       # Rotate VPN (Reconnect to a different server)
       system("docker exec nordvpn nordvpn disconnect", intern = TRUE)
       Sys.sleep(5)  # Wait before reconnecting
-      system("docker exec nordvpn nordvpn connect Germany", intern = TRUE)
+      system("docker exec nordvpn nordvpn connect", intern = TRUE)
       Sys.sleep(10)  # Wait for VPN to establish
       
       # Capture new public IP
@@ -825,6 +825,7 @@ get_page_insights <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en-GB"
       } else {
         message("✅ VPN Rotation Successful: IP changed!")
       }
+      
     } 
   } else if(consecutive_error_count >= max_consecutive_errors & !local) {
     # message("Max consecutive errors reached. Exiting session.")
