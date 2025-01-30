@@ -39,16 +39,24 @@ jobs:
       - name: Wait for VPN to Establish
         run: |
           for i in {1..10}; do
-            VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1)
-            if [[ "$VPN_STATUS" == *"Connected"* ]]; then
+            VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
+            echo "VPN Status Output: $VPN_STATUS"
+
+            if echo "$VPN_STATUS" | grep -q "Connected"; then
               echo "✅ VPN Connected!"
-              exit 0
+              break
             fi
+
             echo "⏳ Waiting for VPN... Attempt $i/10"
             sleep 3
           done
-          echo "❌ VPN failed to connect."
-          exit 1
+
+          # Final Check: Fail if VPN never connected
+          VPN_STATUS_FINAL=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
+          if ! echo "$VPN_STATUS_FINAL" | grep -q "Connected"; then
+            echo "❌ VPN failed to connect after 10 attempts."
+            exit 1
+          fi
 
       - name: Get Initial Public IP
         id: initial_ip
