@@ -23,11 +23,11 @@ full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/mai
   rename(iso2c = iso2, country = cntry) %>%
   sample_n(n()) %>% 
   mutate(iso2c = fct_relevel(iso2c, c(eu_countries))) %>% 
-  filter(iso2c == "US") %>% 
   arrange(iso2c)
 
 # Create all combinations of TF and countries
-params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry)
+params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry) %>% 
+  filter(the_cntry == "US")
 
 # Loop over each (timeframe, country) pair
 for (i in seq_len(nrow(params))) {
@@ -610,7 +610,13 @@ for (i in seq_len(nrow(params))) {
         latest_elex <- latest_elex %>% filter(is.na(no_data))
       }
       
+      if("error" %in% names(latest_elex)){
+        latest_elex <- latest_elex %>% select(-error)
+      }      
       
+      if("error" %in% names(election_dat)){
+        election_dat <- election_dat %>% select(-error)
+      }      
       
       
       if(!(identical(latest_elex, election_dat))){
