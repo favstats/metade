@@ -401,8 +401,8 @@ for (i in seq_len(nrow(params))) {
             break  # Stop execution
           }
           
-          print(paste0("imagine: ", nrow(result)))
-          print(result)
+          # print(paste0("imagine: ", nrow(result)))
+          # print(result)
           
           results[[length(results) + 1]] <- result  # Store successful result
         }
