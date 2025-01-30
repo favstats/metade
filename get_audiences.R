@@ -311,7 +311,7 @@ for (i in seq_len(nrow(params))) {
         
         print(fin)
         if (nrow(fin) != 0) {
-          if(!is.null(fin$error)){
+          if(is.null(fin$error)){
             print("mmm")
             fin <- fin %>% 
               mutate(tstamp = tstamp)
