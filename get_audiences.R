@@ -290,26 +290,27 @@ for (i in seq_len(nrow(params))) {
         
         fin <<-
           # get_targeting(internal$page_id, timeframe = glue::glue("LAST_{time}_DAYS")) %>%
-          get_page_insights(internal$page_id, timeframe = glue::glue("LAST_{time}_DAYS"), include_info = "targeting_info", iso2c = the_cntry) %>% 
-          mutate(tstamp = tstamp)
+          get_page_insights(internal$page_id, timeframe = glue::glue("LAST_{time}_DAYS"), include_info = "targeting_info", iso2c = the_cntry)
         
         if (nrow(fin) != 0) {
-          if (!dir.exists(glue::glue("targeting/{time}"))) {
-            dir.create(glue::glue("targeting/{time}"), recursive = T)
+          if(!is.null(fin$error)){
+            fin <- fin %>% 
+              mutate(tstamp = tstamp)
+            if (!dir.exists(glue::glue("targeting/{time}"))) {
+              dir.create(glue::glue("targeting/{time}"), recursive = T)
+            }
+            
+            path <-  paste0(glue::glue("targeting/{time}/"), internal$page_id, ".rds")
+            
+            saveRDS(fin, file = path)           
+          } else {
+            fin <- tibble(internal_id = internal$page_id, no_data = T, error = fin$error) %>%
+              mutate(tstamp = tstamp)
           }
-          
-          path <-
-            paste0(glue::glue("targeting/{time}/"), internal$page_id, ".rds")
-          # if(file.exists(path)){
-          #   ol <- read_rds(path)
-          #
-          #   saveRDS(fin %>% bind_rows(ol), file = path)
-          # } else {
-          
-          saveRDS(fin, file = path)
+
           # }
         } else {
-          fin <- tibble(internal_id = internal$page_id, no_data = T) %>%
+          fin <- tibble(internal_id = internal$page_id, no_data = T, error = fin$error) %>%
             mutate(tstamp = tstamp)
         }
         
@@ -327,6 +328,16 @@ for (i in seq_len(nrow(params))) {
         # }
         
       }
+      
+      str_detect_safe <- function(string, pattern) {
+        if (is.null(string) || is.null(pattern)) {
+          return(FALSE)
+        }
+        out <- str_detect(string, pattern)
+        return(out)
+      }
+      
+      
       
       scraper_for_loop <- function(data, time = tf) {
         results <- list()  # Store results
@@ -351,7 +362,7 @@ for (i in seq_len(nrow(params))) {
             return(NULL)  # Return NULL on failure
           })
           
-          if (stringr::str_detect(str_to_lower(the_error), "log in")) {
+          if (stringr::str_detect(str_to_lower(the_error), "log in") | str_detect_safe(str_to_lower(result$error), "log in")) {
             message("❌ API Block or No Data! Exiting early...")
             writeLines("VPN_ROTATION_NEEDED", "status.txt")  # Save status
             break  # Stop execution

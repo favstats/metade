@@ -805,7 +805,7 @@ get_page_insights <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en-GB"
   
   # **Exit with an error code when VPN rotation is needed**
   if (consecutive_error_count >= max_consecutive_errors) {
-    message("❌ Max consecutive errors reached. Exiting with code 42 to trigger VPN rotation in GitHub Actions...")
+    # message("❌ Max consecutive errors reached. Exiting with code 42 to trigger VPN rotation in GitHub Actions...")
     return(tibble())
   }
 
@@ -839,7 +839,7 @@ get_page_insights <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en-GB"
     
     
     # Return early or continue logic if needed
-    return(NULL)
+    return(tibble(error = out[[1]][["errors"]][["description"]]))
   }
   
   # Reset the global error counter on success
