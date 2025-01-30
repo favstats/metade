@@ -1,5 +1,8 @@
 library(tidyverse)
 
+writeLines("INIT", "status.txt")  # Save status
+
+
 # Define time frame values
 tf_values <- c("7", "30", "90")
 
@@ -18,13 +21,18 @@ full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/mai
 # Create all combinations of TF and countries
 params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry)
 
-# Apply function using walk2()
-walk2(params$tf, params$the_cntry, ~{
+# Loop over each (timeframe, country) pair
+for (i in seq_len(nrow(params))) {
+  
+  tf <- params$tf[i]
+  the_cntry <- params$the_cntry[i]
+  
+  print(glue::glue("🔄 Processing: {the_cntry} - Last {tf} Days"))
+  
+  if(readLines("status.txt")!="VPN_ROTATION_NEEDED"){
+    
   
   consecutive_error_count <- 0
-  
-  tf <- .x
-  the_cntry <- .y
     
     try({
       
@@ -273,15 +281,10 @@ walk2(params$tf, params$the_cntry, ~{
       fin <<- tibble(no_data = T)
       
       scraper <- function(internal, time = tf) {
-        try({
+        # try({
           
-          if((which(scrape_dat$page_id == internal$page_id) %% round(nrow(scrape_dat)/4, -1)) == 0){
-            
-            print(paste0(internal$page_name,": ", round(which(scrape_dat$page_id == internal$page_id)/nrow(scrape_dat)*100, 2)))
-            
-          }
+
           
-        })
         
         # if(is.null(fin$error)){
         
@@ -320,11 +323,55 @@ walk2(params$tf, params$the_cntry, ~{
         # })
         return(fin)
         
+        # })
         # }
         
       }
       
-      scraper <- possibly(scraper, otherwise = NULL, quiet = F)
+      scraper_for_loop <- function(data, time = tf) {
+        results <- list()  # Store results
+        
+        for (i in seq_len(nrow(data))) {
+          internal <- data[i, , drop = FALSE]  # Extract row as a tibble
+          
+          # try({
+          #   # Print status update every 25% of data processed
+          #   if ((which(scrape_dat$page_id == internal$page_id) %% round(nrow(scrape_dat)/4, -1)) == 0) {
+          #     print(paste0(internal$page_name, ": ", round(which(scrape_dat$page_id == internal$page_id)/nrow(scrape_dat) * 100, 2), "% complete"))
+          #   }
+          # })
+          
+          result <- tryCatch({
+            # Call scraper function
+            scraper(internal, time = time)
+          }, error = function(e) {
+            message("❌ Error occurred: ", e$message)
+            the_error <<- e$message
+            return(NULL)  # Return NULL on failure
+          })
+          
+          if (stringr::str_detect(str_to_lower(the_error), "log in")) {
+            message("❌ API Block or No Data! Exiting early...")
+            writeLines("VPN_ROTATION_NEEDED", "status.txt")  # Save status
+            break  # Stop execution
+          }
+          
+          results[[length(results) + 1]] <- result  # Store successful result
+        }
+        
+        results <<- results
+        # Bind results with `mutate_all(as.character)` to avoid inconsistent types
+        if (length(results) > 0) {
+          final_result <- bind_rows(results) %>% mutate_all(as.character)
+          return(final_result)
+        } else {
+          return(tibble())  # Return empty tibble if no data
+        }
+      }
+      
+      # enddat5 <- scraper_for_loop( tibble(page_id = c("47217143218", "47217143218", "XXX")), time = "7")
+      
+      # scraper <- possibly(scraper, otherwise = NULL, quiet = F)
       
       
       print("################ RETRIEVE AUDIENCES ################")
@@ -354,9 +401,11 @@ walk2(params$tf, params$the_cntry, ~{
           print(paste0("Number of remaining pages to check: ", nrow(scrape_dat)))
           
           ### save seperately
-          enddat <-  scrape_dat %>%
-            split(1:nrow(.)) %>%
-            map_dfr_progress(scraper)
+          # enddat <-  scrape_dat %>%
+          #   split(1:nrow(.)) %>%
+          #   map_dfr_progress(scraper)
+          
+          enddat <- scraper_for_loop(scrape_dat, time = tf)
           
           if (nrow(enddat) == 0) {
             
@@ -448,12 +497,19 @@ walk2(params$tf, params$the_cntry, ~{
           
           # debugonce(scraper)
           ### save seperately
-          election_dat <- all_dat %>%
-            # arrange(page_id) %>%
-            # slice(1:2) %>%
-            split(1:nrow(.)) %>%
-            map_dfr_progress(scraper)  %>%
-            mutate_at(vars(contains("total_spend_formatted")), ~ parse_number(as.character(.x))) 
+          # election_dat <- all_dat %>%
+          #   # arrange(page_id) %>%
+          #   # slice(1:2) %>%
+          #   split(1:nrow(.)) %>%
+          #   map_dfr_progress(scraper)  %>%
+          #   mutate_at(vars(contains("total_spend_formatted")), ~ parse_number(as.character(.x))) 
+          # 
+          election_dat <- scraper_for_loop(all_dat, time = tf)
+          
+          if(nrow(election_dat)!=0){
+            election_dat <- election_dat %>%
+              mutate_at(vars(contains("total_spend_formatted")), ~ parse_number(as.character(.x))) 
+          }
           
           if(is.null(election_dat$page_id)){
             election_dat$page_id <- election_dat$internal_id
@@ -853,4 +909,8 @@ walk2(params$tf, params$the_cntry, ~{
     print("################ VERY END ################")
     
     
-  })
+  } else {
+    break
+  }
+  
+}
