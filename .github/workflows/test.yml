@@ -146,7 +146,9 @@ jobs:
 
       - name: Infinite Loop Until Success
         run: |
-          PREV_IP=""
+          # Get the initial IP before VPN connection
+          PREV_IP=$(curl -s ifconfig.me)
+          echo "🌍 Initial IP: $PREV_IP"
 
           while true; do
             echo "🚀 Running get_audiences.R..."
@@ -184,7 +186,7 @@ jobs:
                 # If the IP is different, continue execution
                 if [ "$NEW_IP" != "$PREV_IP" ] && [ -n "$NEW_IP" ]; then
                   echo "✅ IP successfully changed! New IP: $NEW_IP"
-                  PREV_IP=$NEW_IP
+                  PREV_IP=$NEW_IP  # Update the previous IP for the next comparison
                   break
                 else
                   echo "❌ IP did not change. Trying another country..."

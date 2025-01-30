@@ -725,6 +725,8 @@ for (i in seq_len(nrow(params))) {
       new_rows <- length(unique(new_elex$page_id))
       lag_days <- as.numeric(Sys.Date() - lubridate::ymd(new_ds))
       
+      election_dat$amount_spent <- as.numeric(election_dat$amount_spent)
+      
       # Spending coverage statistics
       page_ids_in_togetstuff <- sum(togetstuff$page_id %in% election_dat$page_id)
       total_spend_in_togetstuff <- sum(togetstuff$spend, na.rm = TRUE)
