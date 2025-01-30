@@ -311,6 +311,8 @@ for (i in seq_len(nrow(params))) {
         
         if (nrow(fin) != 0) {
           if(!is.null(fin$error)){
+            print(fin)
+            print("mmm")
             fin <- fin %>% 
               mutate(tstamp = tstamp)
             if (!dir.exists(glue::glue("targeting/{time}"))) {
@@ -321,12 +323,16 @@ for (i in seq_len(nrow(params))) {
             
             saveRDS(fin, file = path)           
           } else {
+            print("ccc")
+            
             fin <- tibble(internal_id = internal$page_id, no_data = T, error = fin$error) %>%
               mutate(tstamp = tstamp)
           }
 
           # }
         } else {
+          print("kkk")
+          
           fin <- tibble(internal_id = internal$page_id, no_data = T) %>%
             mutate(tstamp = tstamp)
         }
