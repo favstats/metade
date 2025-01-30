@@ -69,7 +69,7 @@ jobs:
         run: |
           docker exec nordvpn nordvpn disconnect
           sleep 5
-          docker exec nordvpn nordvpn connect Germany
+          docker exec nordvpn nordvpn connect
           sleep 10  # Wait for reconnection
 
       - name: Wait for New VPN Connection
