@@ -167,7 +167,7 @@ jobs:
 
               # Fetch available NordVPN countries and clean up output
               echo "🌍 Fetching available NordVPN countries..."
-              docker exec nordvpn nordvpn countries | tail -n +2 | grep -Eo '^[A-Za-z ]+$' > countries.txt
+              docker exec nordvpn nordvpn countries | tail -n +2 | grep -Eo '^[A-Za-z ]+$' | grep -vE 'available|NordVPN|version|update' > countries.txt
 
               # Read countries into an array
               mapfile -t countries < countries.txt
@@ -205,4 +205,7 @@ jobs:
               echo "✅ Script ran successfully! Exiting loop."
               break
             else
-              echo "❌ Unexpected error: $EXIT_CODE
+              echo "❌ Unexpected error: $EXIT_CODE. Retrying in 30 seconds..."
+              sleep 30
+            fi
+          done
