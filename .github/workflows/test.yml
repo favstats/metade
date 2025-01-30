@@ -6,7 +6,7 @@ on:
       - main  # Runs only when pushing to main
   schedule:
     - cron: '0 8 * * *'  # Runs every day at 08:00 UTC
-    
+
 jobs:
   update-data:
     runs-on: ubuntu-latest
@@ -15,12 +15,22 @@ jobs:
       GITHUB_PAT: ${{ secrets.GH_PAT }}      
       TELEGRAM_BOT_ID: ${{ secrets.TELEGRAM_BOT_ID }}
       TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID }}
+
     steps:
       - name: Setup - Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
+
+      - name: Restore R Package Cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/R
+          key: ${{ runner.os }}-r-packages-${{ hashFiles('**/DESCRIPTION') }}
+          restore-keys: |
+            ${{ runner.os }}-r-packages-
+
       - name: Ensure Docker is Running
         run: |
           sudo systemctl restart docker || echo "Docker restart failed"
@@ -56,53 +66,6 @@ jobs:
           if ! echo "$VPN_STATUS_FINAL" | grep -q "Connected"; then
             echo "❌ VPN failed to connect after 10 attempts."
             exit 1
-          fi
-
-      - name: Get Initial Public IP
-        id: initial_ip
-        run: |
-          INITIAL_IP=$(docker exec nordvpn curl -s ifconfig.me)
-          echo "Initial Public IP: $INITIAL_IP"
-          echo "INITIAL_IP=$INITIAL_IP" >> $GITHUB_ENV
-
-      - name: Rotate VPN (Switch Server)
-        run: |
-          docker exec nordvpn nordvpn disconnect
-          sleep 5
-          docker exec nordvpn nordvpn connect
-          sleep 10  # Wait for reconnection
-
-      - name: Wait for New VPN Connection
-        run: |
-          for i in {1..10}; do
-            VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1)
-            if [[ "$VPN_STATUS" == *"Connected"* ]]; then
-              echo "✅ New VPN Connection Established!"
-              exit 0
-            fi
-            echo "⏳ Waiting for new VPN connection... Attempt $i/10"
-            sleep 3
-          done
-          echo "❌ VPN rotation failed."
-          exit 1
-
-      - name: Get New Public IP
-        id: new_ip
-        run: |
-          NEW_IP=$(docker exec nordvpn curl -s ifconfig.me)
-          echo "New Public IP: $NEW_IP"
-          echo "NEW_IP=$NEW_IP" >> $GITHUB_ENV
-
-      - name: Compare IPs
-        run: |
-          echo "✅ VPN Rotation Successful!"
-          echo "🌍 Initial Public IP: $INITIAL_IP"
-          echo "🌎 New Public IP: $NEW_IP"
-          if [ "$INITIAL_IP" = "$NEW_IP" ]; then
-            echo "❌ VPN Rotation Failed: IPs did not change."
-            exit 1
-          else
-            echo "✅ VPN Rotation Confirmed: IP changed successfully!"
           fi
 
       - name: Apt-get update things
@@ -162,9 +125,36 @@ jobs:
             any::openssl
             any::priceR
 
+      - name: Restore Arrow Cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/arrow
+          key: ${{ runner.os }}-arrow-${{ hashFiles('arrow.R') }}
+          restore-keys: |
+            ${{ runner.os }}-arrow-
+
       - name: "Install arrow"
         run: Rscript 'arrow.R'
 
-      - name: "Script - Run"
+      - name: Infinite Loop Until Success
         run: |
-          Rscript 'get_audiences.R' ${TF} "DE"
+          while true; do
+            echo "🚀 Running get_audiences.R..."
+            Rscript 'get_audiences.R' ${TF} "DE"
+            EXIT_CODE=$?
+            
+            if [ "$EXIT_CODE" -eq 0 ]; then
+              echo "✅ Script ran successfully! Exiting loop."
+              break
+            elif [ "$EXIT_CODE" -eq 42 ]; then
+              echo "🔄 VPN Rotation Needed! Restarting VPN..."
+              docker exec nordvpn nordvpn disconnect
+              sleep 5
+              docker exec nordvpn nordvpn connect
+              sleep 10  # Give time for VPN to reconnect
+              echo "🔄 Retrying get_audiences.R after VPN change..."
+            else
+              echo "❌ Unexpected error: $EXIT_CODE. Retrying in 30 seconds..."
+              sleep 30
+            fi
+          done
