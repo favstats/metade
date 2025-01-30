@@ -15,6 +15,7 @@ jobs:
       GITHUB_PAT: ${{ secrets.GH_PAT }}      
       TELEGRAM_BOT_ID: ${{ secrets.TELEGRAM_BOT_ID }}
       TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID }}
+      R_LIBS_USER: /github/home/r-libs
 
     steps:
       - name: Setup - Checkout repo
@@ -26,7 +27,7 @@ jobs:
       - name: Restore R Package Cache
         uses: actions/cache@v3
         with:
-          path: ~/.cache/R
+          path: /github/home/r-libs
           key: ${{ runner.os }}-r-packages-${{ hashFiles('**/DESCRIPTION') }}
           restore-keys: |
             ${{ runner.os }}-r-packages-
@@ -146,6 +147,44 @@ jobs:
 
           WORKDIR /workspace
 
+          # Install R packages
+          RUN R -e 'install.packages(c( \
+              "tidyverse", \
+              "httr", \
+              "remotes", \
+              "shiny", \
+              "scales", \
+              "treemap", \
+              "here", \
+              "jsonlite", \
+              "janitor", \
+              "quarto", \
+              "highcharter", \
+              "lubridate", \
+              "gt", \
+              "gtExtras", \
+              "pacman", \
+              "openxlsx", \
+              "sf", \
+              "xml2", \
+              "rvest", \
+              "reticulate", \
+              "fs", \
+              "countrycode", \
+              "progress", \
+              "cli", \
+              "digest", \
+              "glue", \
+              "vroom", \
+              "prettydoc", \
+              "DT", \
+              "piggyback", \
+              "httr2", \
+              "openssl", \
+              "priceR", \
+              "arrow" \
+          ), repos="https://cloud.r-project.org", dependencies=TRUE)'
+
           EOF
 
           docker build -t r-dev-env -f Dockerfile.r .
@@ -175,9 +214,7 @@ jobs:
             -e TELEGRAM_BOT_ID=${{ secrets.TELEGRAM_BOT_ID }} \
             -e TELEGRAM_GROUP_ID=${{ secrets.TELEGRAM_GROUP_ID }} \
             -v ${PWD}:/workspace \
-            -v ~/.cache/R:/root/.cache/R \
-            -v ~/.local/share/R:/root/.local/share/R \
-            -v ~/.R:/root/.R \
+            -v /github/home/r-libs:/r-libs \
             r-dev-env tail -f /dev/null
 
       - name: Wait for VPN to Establish
