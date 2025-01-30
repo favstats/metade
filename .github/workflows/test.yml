@@ -146,32 +146,13 @@ jobs:
 
       - name: Infinite Loop Until Success
         run: |
-          # Function to get the current IP (Reliable Method)
+          # Function to get the current IP (more reliable)
           get_current_ip() { 
             dig +short myip.opendns.com @resolver1.opendns.com || curl -s ifconfig.me || echo "UNKNOWN"; 
           }
       
-          # Predefined list of valid NordVPN countries (No API call needed)
-          COUNTRIES=("Albania" "Algeria" "Andorra" "Angola" "Argentina" "Armenia" "Australia"
-                     "Austria" "Azerbaijan" "Bahamas" "Bahrain" "Bangladesh" "Belgium"
-                     "Belize" "Bermuda" "Bhutan" "Bolivia" "Bosnia_And_Herzegovina" "Brazil"
-                     "Brunei_Darussalam" "Bulgaria" "Cambodia" "Canada" "Cayman_Islands" "Chile"
-                     "Colombia" "Costa_Rica" "Croatia" "Cyprus" "Czech_Republic" "Denmark"
-                     "Dominican_Republic" "Ecuador" "Egypt" "El_Salvador" "Estonia" "Finland"
-                     "France" "Georgia" "Germany" "Ghana" "Greece" "Greenland" "Guam"
-                     "Guatemala" "Honduras" "Hong_Kong" "Hungary" "Iceland" "India" "Indonesia"
-                     "Ireland" "Isle_Of_Man" "Israel" "Italy" "Jamaica" "Japan" "Jersey"
-                     "Jordan" "Kazakhstan" "Kenya" "Kuwait" "Lao_Peoples_Democratic_Republic"
-                     "Latvia" "Lebanon" "Liechtenstein" "Lithuania" "Luxembourg" "Malaysia"
-                     "Malta" "Mexico" "Moldova" "Monaco" "Mongolia" "Montenegro" "Morocco"
-                     "Mozambique" "Myanmar" "Nepal" "Netherlands" "New_Zealand" "Nigeria"
-                     "North_Macedonia" "Norway" "Pakistan" "Panama" "Papua_New_Guinea"
-                     "Paraguay" "Peru" "Philippines" "Poland" "Portugal" "Puerto_Rico"
-                     "Romania" "Senegal" "Serbia" "Singapore" "Slovakia" "Slovenia"
-                     "South_Africa" "South_Korea" "Spain" "Sri_Lanka" "Sweden" "Switzerland"
-                     "Taiwan" "Thailand" "Trinidad_And_Tobago" "Tunisia" "Turkey" "Ukraine"
-                     "United_Arab_Emirates" "United_Kingdom" "United_States" "Uruguay"
-                     "Uzbekistan" "Venezuela" "Vietnam")
+          # Predefined list of valid NordVPN countries
+          COUNTRIES=("United_States" "Canada" "Germany" "France" "Netherlands" "Australia" "Japan" "Sweden" "Spain")
       
           # Store the initial IP
           PREV_IP=$(get_current_ip)
@@ -185,40 +166,36 @@ jobs:
             # Check if VPN rotation is needed
             if [ -f status.txt ] && grep -q "VPN_ROTATION_NEEDED" status.txt; then
               echo "🔄 VPN Rotation Needed! Restarting VPN..."
-              docker exec nordvpn nordvpn disconnect
-              sleep 5
-              docker restart nordvpn  # Ensures a full reset
-              sleep 10
+              
+              # Stop and remove the existing NordVPN container
+              docker stop nordvpn || true
+              docker rm nordvpn || true
       
-              # Shuffle countries and attempt connection
-              ATTEMPT=0
-              for RANDOM_COUNTRY in $(shuf -e "${COUNTRIES[@]}"); do
-                echo "🌍 Trying to connect to: $RANDOM_COUNTRY"
+              # Select a random country from the list
+              RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
+              echo "🌍 Selected VPN Country: $RANDOM_COUNTRY"
       
-                # Connect to selected VPN country
-                docker exec nordvpn nordvpn connect "$RANDOM_COUNTRY"
-                sleep 15  # Allow time for connection
+              # Start a fresh NordVPN container with a random country
+              docker run -d --name nordvpn --cap-add=NET_ADMIN --cap-add=NET_RAW \
+                -e TOKEN=$NORDVPN_TOKEN \
+                -e CONNECT=$RANDOM_COUNTRY \
+                -e TECHNOLOGY=NordLynx \
+                ghcr.io/bubuntux/nordvpn
       
-                # Get new IP and check if it changed
-                NEW_IP=$(get_current_ip)
-                echo "🔎 Current IP: $NEW_IP"
+              # Wait for VPN to establish a connection
+              sleep 15
       
-                if [ "$NEW_IP" != "$PREV_IP" ] && [ "$NEW_IP" != "UNKNOWN" ]; then
-                  echo "✅ Connected! New IP: $NEW_IP"
-                  PREV_IP=$NEW_IP
-                  break  # Success! Stop trying new countries
-                else
-                  echo "❌ IP did not change. Trying another country..."
-                  docker exec nordvpn nordvpn disconnect
-                  sleep 5
-                fi
+              # Verify that the IP has changed
+              NEW_IP=$(get_current_ip)
+              echo "🔎 New IP: $NEW_IP"
       
-                ATTEMPT=$((ATTEMPT + 1))
-                if [ "$ATTEMPT" -ge 3 ]; then
-                  echo "🚨 Too many failed VPN attempts! Exiting with error."
-                  exit 1
-                fi
-              done
+              if [ "$NEW_IP" != "$PREV_IP" ] && [ "$NEW_IP" != "UNKNOWN" ]; then
+                echo "✅ Connected! New IP: $NEW_IP"
+                PREV_IP=$NEW_IP
+              else
+                echo "❌ IP did not change. Retrying with another country..."
+                sleep 5
+              fi
       
               echo "🔄 Retrying get_audiences.R after VPN change..."
               rm status.txt  # Reset status after handling
