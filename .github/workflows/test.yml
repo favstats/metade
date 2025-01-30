@@ -1,0 +1,163 @@
+name: VPN Rotation on Push
+
+on:
+  push:
+    branches:
+      - main  # Runs only when pushing to main
+  schedule:
+    - cron: '0 8 * * *'  # Runs every day at 08:00 UTC
+    
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    env:
+      TF: "30"  # Timeframe variable
+      GITHUB_PAT: ${{ secrets.GH_PAT }}      
+      TELEGRAM_BOT_ID: ${{ secrets.TELEGRAM_BOT_ID }}
+      TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID }}
+    steps:
+      - name: Setup - Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Ensure Docker is Running
+        run: |
+          sudo systemctl restart docker || echo "Docker restart failed"
+          sudo docker info || echo "Docker is not running!"
+
+      - name: Run NordVPN Container
+        env:
+          NORDVPN_TOKEN: ${{ secrets.NORDVPN_TOKEN }}
+        run: |
+          docker run -d --name nordvpn --cap-add=NET_ADMIN --cap-add=NET_RAW \
+            -e TOKEN=$NORDVPN_TOKEN \
+            -e CONNECT=United_States \
+            -e TECHNOLOGY=NordLynx \
+            ghcr.io/bubuntux/nordvpn
+
+      - name: Wait for VPN to Establish
+        run: |
+          for i in {1..10}; do
+            VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1)
+            if [[ "$VPN_STATUS" == *"Connected"* ]]; then
+              echo "✅ VPN Connected!"
+              exit 0
+            fi
+            echo "⏳ Waiting for VPN... Attempt $i/10"
+            sleep 3
+          done
+          echo "❌ VPN failed to connect."
+          exit 1
+
+      - name: Get Initial Public IP
+        id: initial_ip
+        run: |
+          INITIAL_IP=$(docker exec nordvpn curl -s ifconfig.me)
+          echo "Initial Public IP: $INITIAL_IP"
+          echo "INITIAL_IP=$INITIAL_IP" >> $GITHUB_ENV
+
+      - name: Rotate VPN (Switch Server)
+        run: |
+          docker exec nordvpn nordvpn disconnect
+          sleep 5
+          docker exec nordvpn nordvpn connect Germany
+          sleep 10  # Wait for reconnection
+
+      - name: Wait for New VPN Connection
+        run: |
+          for i in {1..10}; do
+            VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1)
+            if [[ "$VPN_STATUS" == *"Connected"* ]]; then
+              echo "✅ New VPN Connection Established!"
+              exit 0
+            fi
+            echo "⏳ Waiting for new VPN connection... Attempt $i/10"
+            sleep 3
+          done
+          echo "❌ VPN rotation failed."
+          exit 1
+
+      - name: Get New Public IP
+        id: new_ip
+        run: |
+          NEW_IP=$(docker exec nordvpn curl -s ifconfig.me)
+          echo "New Public IP: $NEW_IP"
+          echo "NEW_IP=$NEW_IP" >> $GITHUB_ENV
+
+      - name: Compare IPs
+        run: |
+          echo "✅ VPN Rotation Successful!"
+          echo "🌍 Initial Public IP: $INITIAL_IP"
+          echo "🌎 New Public IP: $NEW_IP"
+          if [ "$INITIAL_IP" = "$NEW_IP" ]; then
+            echo "❌ VPN Rotation Failed: IPs did not change."
+            exit 1
+          else
+            echo "✅ VPN Rotation Confirmed: IP changed successfully!"
+          fi
+
+      - name: Apt-get update things
+        run: sudo apt-get update 
+
+      - name: Apt-get needed things
+        run: |
+          sudo apt-get install --no-install-recommends -y \
+          libssl-dev \
+          libcurl4-openssl-dev \
+          libxml2-dev \
+          libharfbuzz-dev \
+          libfribidi-dev \
+          libudunits2-dev \
+          libgdal-dev
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          cache-version: 1
+          needs: |
+            any::tidyverse
+            any::httr
+            any::remotes
+            any::shiny
+            any::scales
+            any::treemap
+            any::here
+            any::jsonlite
+            any::janitor
+            any::quarto
+            any::highcharter
+            any::lubridate
+            any::gt
+            any::gtExtras
+            any::pacman
+            any::openxlsx
+            any::sf
+            any::xml2
+            any::rvest
+            any::reticulate
+            any::fs
+            any::countrycode
+            any::progress
+            any::cli
+            any::digest
+            any::glue
+            any::vroom
+            any::prettydoc
+            any::DT
+            any::piggyback
+            any::httr2
+            any::openssl
+            any::priceR
+
+      - name: "Install arrow"
+        run: Rscript 'arrow.R'
+
+      - name: "Script - Run"
+        run: |
+          Rscript 'get_audiences.R' ${TF} "DE"

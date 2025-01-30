@@ -793,13 +793,44 @@ if (!exists("consecutive_error_count", envir = .GlobalEnv)) {
 
 get_page_insights <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en-GB",
                               iso2c = "US", include_info = c("page_info", "targeting_info"),
-                              join_info = T, max_consecutive_errors = 5) 
+                              join_info = T, max_consecutive_errors = 5, local = F) 
 {
   # Terminate R session if the maximum error count is reached
-  if (consecutive_error_count >= max_consecutive_errors) {
+  # Check if error count reached the threshold
+  consecutive_error_count <- get("consecutive_error_count", envir = .GlobalEnv)
+  if(local){
+    if (consecutive_error_count >= max_consecutive_errors) {
+      message("🔄 Max consecutive errors reached. Rotating VPN...")
+      
+      # Capture initial public IP
+      initial_ip <- system("curl -s ifconfig.me", intern = TRUE)
+      message(glue::glue("🌍 Initial Public IP: {initial_ip}"))
+      
+      # Rotate VPN (Reconnect to a different server)
+      system("docker exec nordvpn nordvpn disconnect", intern = TRUE)
+      Sys.sleep(5)  # Wait before reconnecting
+      system("docker exec nordvpn nordvpn connect Germany", intern = TRUE)
+      Sys.sleep(10)  # Wait for VPN to establish
+      
+      # Capture new public IP
+      new_ip <- system("curl -s ifconfig.me", intern = TRUE)
+      message(glue::glue("🌎 New Public IP: {new_ip}"))
+      
+      # Reset error counter after switching VPN
+      assign("consecutive_error_count", 0, envir = .GlobalEnv)
+      
+      # Verify that the IP actually changed
+      if (initial_ip == new_ip) {
+        message("❌ VPN Rotation Failed: IP did not change.")
+      } else {
+        message("✅ VPN Rotation Successful: IP changed!")
+      }
+    } 
+  } else if(consecutive_error_count >= max_consecutive_errors & !local) {
     # message("Max consecutive errors reached. Exiting session.")
     return(tibble())
   }
+  
   ua_list <- c("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36",
                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36")
