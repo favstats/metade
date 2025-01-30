@@ -1146,7 +1146,7 @@ retrieve_targeting_metadata <- function(country_code,
 #'   ds = "2024-10-25"
 #' )
 #' print(head(latest_data))
-get_targeting_db <- function(the_cntry, tf, ds, remove_nas = T, verbose = F) {
+get_targeting_db2 <- function(the_cntry, tf, ds, remove_nas = T, verbose = F) {
   # Validate inputs
   if (missing(the_cntry) || missing(tf) || missing(ds)) {
     stop("All parameters (`the_cntry`, `tf`, `ds`) are required.")
@@ -1165,12 +1165,26 @@ get_targeting_db <- function(the_cntry, tf, ds, remove_nas = T, verbose = F) {
   if(verbose){
     message("Constructed URL: ", url)
   }
-  # Attempt to read the parquet file
+  
+  # Create a temporary file
+  tmp_file <- tempfile(fileext = ".parquet")
+  
+  # Attempt to download and read the parquet file
   tryCatch({
-    data <- arrow::read_parquet(url)
+    # Download the file
+    if(verbose) message("Downloading file...")
+    download.file(url, tmp_file, mode = "wb", quiet = !verbose)
+    
+    if(verbose) message("Reading parquet file...")
+    data <- arrow::read_parquet(tmp_file)
+    
+    # Clean up temporary file
+    unlink(tmp_file)
+    
     if(verbose){
       message("Data successfully retrieved.")
     }
+    
     if(remove_nas){
       if("no_data" %in% names(data)){
         data <- data %>% dplyr::filter(is.na(no_data))
@@ -1180,8 +1194,18 @@ get_targeting_db <- function(the_cntry, tf, ds, remove_nas = T, verbose = F) {
       }
     }
     return(data)
+    
   }, error = function(e) {
-    stop("Failed to retrieve or parse the parquet file. Error: ", e$message)
+    # Clean up temporary file in case of error
+    unlink(tmp_file)
+    if(verbose) {
+      message("Error encountered: ", e$message)
+    }
+    # Return empty tibble instead of error
+    return(tibble::tibble())
+  }, finally = {
+    # Ensure temporary file is cleaned up
+    unlink(tmp_file)
   })
 }
 

@@ -188,7 +188,7 @@ for (i in seq_len(nrow(params))) {
         
         try({
           
-          latest_elex <- get_targeting_db(the_cntry, tf, thosearethere$ds[1], verbose = T)
+          latest_elex <- get_targeting_db2(the_cntry, tf, thosearethere$ds[1], verbose = T)
           
         })
         
@@ -484,7 +484,7 @@ for (i in seq_len(nrow(params))) {
             
             try({
               
-              latest_elex <- get_targeting_db(the_cntry, tf, thosearethere$ds[1], verbose = T)
+              latest_elex <- get_targeting_db2(the_cntry, tf, thosearethere$ds[1], verbose = T)
               
             })
             
