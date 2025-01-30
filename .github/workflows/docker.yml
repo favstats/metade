@@ -1,0 +1,171 @@
+name: VPN Rotation and Data Update
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 8 * * *'  # Runs every day at 08:00 UTC
+  workflow_dispatch:
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GH_PAT }}      
+      TELEGRAM_BOT_ID: ${{ secrets.TELEGRAM_BOT_ID }}
+      TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID }}
+      R_LIBS_USER: /github/home/r-libs
+
+    steps:
+      - name: Setup - Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Create R packages directory
+        run: |
+          sudo mkdir -p /github/home/r-libs
+          sudo chmod 777 /github/home/r-libs
+
+      - name: Restore R Package Cache
+        uses: actions/cache@v3
+        with:
+          path: /github/home/r-libs
+          key: ${{ runner.os }}-r-packages-${{ hashFiles('**/DESCRIPTION') }}
+          restore-keys: |
+            ${{ runner.os }}-r-packages-
+
+      # Set up Docker networking
+      - name: Setup Docker Network
+        run: docker network create vpn-network
+
+      # Pull the pre-built R image
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Pre-built R Image
+        run: docker pull ghcr.io/${{ github.repository }}/r-scraper:latest
+
+      # Set up VPN container
+      - name: Run NordVPN Container
+        env:
+          NORDVPN_TOKEN: ${{ secrets.NORDVPN_TOKEN }}
+        run: |
+          COUNTRIES=("United_States" "Canada" "Germany" "France" "Netherlands" "Australia" "Japan" "Sweden" "Spain")
+          RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
+          echo "Selected VPN Country: $RANDOM_COUNTRY"
+          
+          docker run -d --name nordvpn \
+            --cap-add=NET_ADMIN \
+            --cap-add=NET_RAW \
+            --network vpn-network \
+            -e TOKEN=$NORDVPN_TOKEN \
+            -e CONNECT=$RANDOM_COUNTRY \
+            -e TECHNOLOGY=NordLynx \
+            ghcr.io/bubuntux/nordvpn
+
+      - name: Start R Container
+        run: |
+          docker run -d --name r-dev \
+            --network container:nordvpn \
+            -e GITHUB_PAT=${{ secrets.GH_PAT }} \
+            -e TELEGRAM_BOT_ID=${{ secrets.TELEGRAM_BOT_ID }} \
+            -e TELEGRAM_GROUP_ID=${{ secrets.TELEGRAM_GROUP_ID }} \
+            -v ${PWD}:/workspace \
+            -v /github/home/r-libs:/r-libs \
+            ghcr.io/${{ github.repository }}/r-scraper:latest tail -f /dev/null
+
+      - name: Wait for VPN to Establish
+        run: |
+          for i in {1..10}; do
+            VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
+            echo "VPN Status Output: $VPN_STATUS"
+
+            if echo "$VPN_STATUS" | grep -q "Connected"; then
+              echo "✅ VPN Connected!"
+              break
+            fi
+
+            echo "⏳ Waiting for VPN... Attempt $i/10"
+            sleep 3
+          done
+
+          VPN_STATUS_FINAL=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
+          if ! echo "$VPN_STATUS_FINAL" | grep -q "Connected"; then
+            echo "❌ VPN failed to connect after 10 attempts."
+            exit 1
+          fi
+
+      - name: Infinite Loop Until Success
+        run: |
+          get_current_ip() { 
+            docker exec r-dev curl -s ifconfig.me || echo "UNKNOWN"
+          }
+      
+          PREV_IP=$(get_current_ip)
+          echo "🌍 Initial IP: $PREV_IP"
+      
+          while true; do
+            echo "🚀 Running get_audiences.R..."
+            docker exec r-dev Rscript get_audiences.R
+            EXIT_CODE=$?
+      
+            if [ -f status.txt ] && grep -q "VPN_ROTATION_NEEDED" status.txt; then
+              echo "🔄 VPN Rotation Needed! Restarting VPN..."
+              
+              docker stop nordvpn r-dev
+              docker rm nordvpn r-dev
+      
+              COUNTRIES=("United_States" "Canada" "Germany" "France" "Netherlands" "Australia" "Japan" "Sweden" "Spain")
+              RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
+              echo "🌍 Selected VPN Country: $RANDOM_COUNTRY"
+      
+              docker run -d --name nordvpn \
+                --cap-add=NET_ADMIN \
+                --cap-add=NET_RAW \
+                --network vpn-network \
+                -e TOKEN=$NORDVPN_TOKEN \
+                -e CONNECT=$RANDOM_COUNTRY \
+                -e TECHNOLOGY=NordLynx \
+                ghcr.io/bubuntux/nordvpn
+
+              docker run -d --name r-dev \
+                --network container:nordvpn \
+                -e GITHUB_PAT=${{ secrets.GH_PAT }} \
+                -e TELEGRAM_BOT_ID=${{ secrets.TELEGRAM_BOT_ID }} \
+                -e TELEGRAM_GROUP_ID=${{ secrets.TELEGRAM_GROUP_ID }} \
+                -v ${PWD}:/workspace \
+                -v /github/home/r-libs:/r-libs \
+                ghcr.io/${{ github.repository }}/r-scraper:latest tail -f /dev/null
+      
+              sleep 15
+      
+              NEW_IP=$(get_current_ip)
+              echo "🔎 New IP: $NEW_IP"
+      
+              if [ "$NEW_IP" != "$PREV_IP" ] && [ "$NEW_IP" != "UNKNOWN" ]; then
+                echo "✅ Connected! New IP: $NEW_IP"
+                PREV_IP=$NEW_IP
+              else
+                echo "❌ IP did not change. Retrying with another country..."
+                sleep 5
+                continue
+              fi
+      
+              echo "🔄 Retrying get_audiences.R after VPN change..."
+              rm status.txt
+      
+            elif [ "$EXIT_CODE" -eq 0 ]; then
+              echo "✅ Script ran successfully! Exiting loop."
+              break
+            else
+              echo "❌ Unexpected error: $EXIT_CODE. Retrying in 30 seconds..."
+              sleep 30
+            fi
+          done
