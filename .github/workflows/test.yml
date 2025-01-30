@@ -146,10 +146,12 @@ jobs:
 
       - name: Infinite Loop Until Success
         run: |
-          # Function to get the current IP
-          get_current_ip() { curl -s ifconfig.me || echo "UNKNOWN"; }
-
-          # Predefined list of valid NordVPN countries
+          # Function to get the current IP (Reliable Method)
+          get_current_ip() { 
+            dig +short myip.opendns.com @resolver1.opendns.com || curl -s ifconfig.me || echo "UNKNOWN"; 
+          }
+      
+          # Predefined list of valid NordVPN countries (No API call needed)
           COUNTRIES=("Albania" "Algeria" "Andorra" "Angola" "Argentina" "Armenia" "Australia"
                      "Austria" "Azerbaijan" "Bahamas" "Bahrain" "Bangladesh" "Belgium"
                      "Belize" "Bermuda" "Bhutan" "Bolivia" "Bosnia_And_Herzegovina" "Brazil"
@@ -170,44 +172,57 @@ jobs:
                      "Taiwan" "Thailand" "Trinidad_And_Tobago" "Tunisia" "Turkey" "Ukraine"
                      "United_Arab_Emirates" "United_Kingdom" "United_States" "Uruguay"
                      "Uzbekistan" "Venezuela" "Vietnam")
-
+      
           # Store the initial IP
           PREV_IP=$(get_current_ip)
           echo "🌍 Initial IP: $PREV_IP"
-
+      
           while true; do
             echo "🚀 Running get_audiences.R..."
             Rscript 'get_audiences.R'
             EXIT_CODE=$?
-
+      
             # Check if VPN rotation is needed
             if [ -f status.txt ] && grep -q "VPN_ROTATION_NEEDED" status.txt; then
               echo "🔄 VPN Rotation Needed! Restarting VPN..."
               docker exec nordvpn nordvpn disconnect
               sleep 5
-
-              # Shuffle countries and try connecting until IP changes
+              docker restart nordvpn  # Ensures a full reset
+              sleep 10
+      
+              # Shuffle countries and attempt connection
+              ATTEMPT=0
               for RANDOM_COUNTRY in $(shuf -e "${COUNTRIES[@]}"); do
                 echo "🌍 Trying to connect to: $RANDOM_COUNTRY"
+      
+                # Connect to selected VPN country
                 docker exec nordvpn nordvpn connect "$RANDOM_COUNTRY"
-                sleep 10  # Wait for connection
-
+                sleep 15  # Allow time for connection
+      
                 # Get new IP and check if it changed
                 NEW_IP=$(get_current_ip)
+                echo "🔎 Current IP: $NEW_IP"
+      
                 if [ "$NEW_IP" != "$PREV_IP" ] && [ "$NEW_IP" != "UNKNOWN" ]; then
                   echo "✅ Connected! New IP: $NEW_IP"
                   PREV_IP=$NEW_IP
-                  break
+                  break  # Success! Stop trying new countries
                 else
                   echo "❌ IP did not change. Trying another country..."
                   docker exec nordvpn nordvpn disconnect
                   sleep 5
                 fi
+      
+                ATTEMPT=$((ATTEMPT + 1))
+                if [ "$ATTEMPT" -ge 3 ]; then
+                  echo "🚨 Too many failed VPN attempts! Exiting with error."
+                  exit 1
+                fi
               done
-
+      
               echo "🔄 Retrying get_audiences.R after VPN change..."
               rm status.txt  # Reset status after handling
-
+      
             elif [ "$EXIT_CODE" -eq 0 ]; then
               echo "✅ Script ran successfully! Exiting loop."
               break
@@ -215,4 +230,4 @@ jobs:
               echo "❌ Unexpected error: $EXIT_CODE. Retrying in 30 seconds..."
               sleep 30
             fi
-          done
+          done      
