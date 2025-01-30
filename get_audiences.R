@@ -510,7 +510,7 @@ for (i in seq_len(nrow(params))) {
             election_dat  <- enddat %>%
               mutate_at(vars(contains("total_spend_formatted")), ~ parse_number(as.character(.x))) %>%
               # rename(page_id = internal_id) %>%
-              left_join(all_dat) %>%
+              left_join(all_dat) %>% mutate_all(as.character) %>% 
               bind_rows(latest_elex %>% mutate_all(as.character) %>% filter(!(page_id %in% enddat$page_id))) %>% 
               distinct_if(page_id, total_num_ads, total_spend_formatted, is_exclusion,
                           value, type, detailed_type, custom_audience_type, location_type, .keep_all = T) 
