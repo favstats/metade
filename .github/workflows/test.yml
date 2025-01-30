@@ -15,7 +15,6 @@ jobs:
       GITHUB_PAT: ${{ secrets.GH_PAT }}      
       TELEGRAM_BOT_ID: ${{ secrets.TELEGRAM_BOT_ID }}
       TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID }}
-      R_LIBS_USER: /github/home/r-libs
 
     steps:
       - name: Setup - Checkout repo
@@ -24,17 +23,81 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
 
-      - name: Create R packages directory
-        run: |
-          mkdir -p /github/home/r-libs
-
       - name: Restore R Package Cache
         uses: actions/cache@v3
         with:
-          path: /github/home/r-libs
+          path: ~/.cache/R
           key: ${{ runner.os }}-r-packages-${{ hashFiles('**/DESCRIPTION') }}
           restore-keys: |
             ${{ runner.os }}-r-packages-
+
+      - name: Apt-get update things
+        run: sudo apt-get update 
+
+      - name: Apt-get needed things
+        run: |
+          sudo apt-get install --no-install-recommends -y \
+          libssl-dev \
+          libcurl4-openssl-dev \
+          libxml2-dev \
+          libharfbuzz-dev \
+          libfribidi-dev \
+          libudunits2-dev \
+          libgdal-dev
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          cache-version: 1
+          needs: |
+            any::tidyverse
+            any::httr
+            any::remotes
+            any::shiny
+            any::scales
+            any::treemap
+            any::here
+            any::jsonlite
+            any::janitor
+            any::quarto
+            any::highcharter
+            any::lubridate
+            any::gt
+            any::gtExtras
+            any::pacman
+            any::openxlsx
+            any::sf
+            any::xml2
+            any::rvest
+            any::reticulate
+            any::fs
+            any::countrycode
+            any::progress
+            any::cli
+            any::digest
+            any::glue
+            any::vroom
+            any::prettydoc
+            any::DT
+            any::piggyback
+            any::httr2
+            any::openssl
+            any::priceR
+
+      - name: Restore Arrow Cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/arrow
+          key: ${{ runner.os }}-arrow-${{ hashFiles('arrow.R') }}
+          restore-keys: |
+            ${{ runner.os }}-arrow-
+
+      - name: Install arrow
+        run: Rscript 'arrow.R'
 
       - name: Setup Docker Network
         run: docker network create vpn-network
@@ -44,8 +107,6 @@ jobs:
           cat << EOF > Dockerfile.r
           FROM rocker/r-ver:4.1.2
 
-          ENV R_LIBS_USER=/r-libs
-          
           RUN apt-get update && apt-get install -y \
               libssl-dev \
               libcurl4-openssl-dev \
@@ -54,24 +115,36 @@ jobs:
               libfribidi-dev \
               libudunits2-dev \
               libgdal-dev \
+              libgeos-dev \
               git \
               libfontconfig1-dev \
               libcairo2-dev \
-              curl
-
-          RUN mkdir -p /r-libs && \
-              chmod 777 /r-libs
+              curl \
+              libproj-dev \
+              gdal-bin \
+              libnode-dev \
+              libcairo2-dev \
+              libgeos-dev \
+              libproj-dev \
+              libfontconfig1-dev \
+              libudunits2-0 \
+              libharfbuzz-dev \
+              libfribidi-dev \
+              libfreetype6-dev \
+              libpng-dev \
+              libtiff5-dev \
+              libjpeg-dev \
+              default-libmysqlclient-dev \
+              libpq-dev \
+              unixodbc-dev \
+              libsqlite3-dev \
+              libsasl2-dev \
+              libpcre2-dev \
+              libpcre3-dev \
+              libicu-dev \
+              libv8-dev
 
           WORKDIR /workspace
-
-          RUN R -e 'install.packages(c( \
-              "tidyverse", "httr", "remotes", "shiny", "scales", "treemap", \
-              "here", "jsonlite", "janitor", "quarto", "highcharter", \
-              "lubridate", "gt", "gtExtras", "pacman", "openxlsx", "sf", \
-              "xml2", "rvest", "reticulate", "fs", "countrycode", "progress", \
-              "cli", "digest", "glue", "vroom", "prettydoc", "DT", \
-              "piggyback", "httr2", "openssl", "priceR" \
-          ), repos="https://cloud.r-project.org")'
 
           EOF
 
@@ -102,7 +175,9 @@ jobs:
             -e TELEGRAM_BOT_ID=${{ secrets.TELEGRAM_BOT_ID }} \
             -e TELEGRAM_GROUP_ID=${{ secrets.TELEGRAM_GROUP_ID }} \
             -v ${PWD}:/workspace \
-            -v /github/home/r-libs:/r-libs \
+            -v ~/.cache/R:/root/.cache/R \
+            -v ~/.local/share/R:/root/.local/share/R \
+            -v ~/.R:/root/.R \
             r-dev-env tail -f /dev/null
 
       - name: Wait for VPN to Establish
@@ -125,9 +200,6 @@ jobs:
             echo "❌ VPN failed to connect after 10 attempts."
             exit 1
           fi
-
-      - name: Install arrow
-        run: docker exec r-dev Rscript 'arrow.R'
 
       - name: Infinite Loop Until Success
         run: |
@@ -168,7 +240,9 @@ jobs:
                 -e TELEGRAM_BOT_ID=${{ secrets.TELEGRAM_BOT_ID }} \
                 -e TELEGRAM_GROUP_ID=${{ secrets.TELEGRAM_GROUP_ID }} \
                 -v ${PWD}:/workspace \
-                -v /github/home/r-libs:/r-libs \
+                -v ~/.cache/R:/root/.cache/R \
+                -v ~/.local/share/R:/root/.local/share/R \
+                -v ~/.R:/root/.R \
                 r-dev-env tail -f /dev/null
       
               sleep 15
