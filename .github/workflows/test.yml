@@ -106,20 +106,46 @@ jobs:
       - name: Create R Development Container
         run: |
           cat << EOF > Dockerfile.r
-          FROM rocker/tidyverse:4.1.2
+          FROM rocker/r-ver:4.1.2
 
           RUN apt-get update && apt-get install -y \
+              libssl-dev \
+              libcurl4-openssl-dev \
+              libxml2-dev \
+              libharfbuzz-dev \
+              libfribidi-dev \
+              libudunits2-dev \
+              libgdal-dev \
+              libgeos-dev \
+              git \
+              libfontconfig1-dev \
+              libcairo2-dev \
               curl \
-              git
+              libproj-dev \
+              gdal-bin \
+              libnode-dev \
+              libcairo2-dev \
+              libgeos-dev \
+              libproj-dev \
+              libfontconfig1-dev \
+              libudunits2-0 \
+              libharfbuzz-dev \
+              libfribidi-dev \
+              libfreetype6-dev \
+              libpng-dev \
+              libtiff5-dev \
+              libjpeg-dev \
+              default-libmysqlclient-dev \
+              libpq-dev \
+              unixodbc-dev \
+              libsqlite3-dev \
+              libsasl2-dev \
+              libpcre2-dev \
+              libpcre3-dev \
+              libicu-dev \
+              libv8-dev
 
           WORKDIR /workspace
-
-          RUN install2.r --error \
-            httr2 \
-            piggyback \
-            arrow
-
-          EOF
 
           # Install R packages
           RUN R -e 'install.packages(c( \
@@ -229,32 +255,48 @@ jobs:
             if [ -f status.txt ] && grep -q "VPN_ROTATION_NEEDED" status.txt; then
               echo "🔄 VPN Rotation Needed! Restarting VPN..."
               
-              docker stop nordvpn r-dev
-              docker rm nordvpn r-dev
-      
-              COUNTRIES=("United_States" "Canada" "Germany" "France" "Netherlands" "Australia" "Japan" "Sweden" "Spain")
-              RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
-              echo "🌍 Selected VPN Country: $RANDOM_COUNTRY"
-      
-              docker run -d --name nordvpn \
-                --cap-add=NET_ADMIN \
-                --cap-add=NET_RAW \
-                --network vpn-network \
-                -e TOKEN=$NORDVPN_TOKEN \
-                -e CONNECT=$RANDOM_COUNTRY \
-                -e TECHNOLOGY=NordLynx \
-                ghcr.io/bubuntux/nordvpn
-
-              docker run -d --name r-dev \
-                --network container:nordvpn \
-                -e GITHUB_PAT=${{ secrets.GH_PAT }} \
-                -e TELEGRAM_BOT_ID=${{ secrets.TELEGRAM_BOT_ID }} \
-                -e TELEGRAM_GROUP_ID=${{ secrets.TELEGRAM_GROUP_ID }} \
-                -v ${PWD}:/workspace \
-                -v ~/.cache/R:/root/.cache/R \
-                -v ~/.local/share/R:/root/.local/share/R \
-                -v ~/.R:/root/.R \
-                r-dev-env tail -f /dev/null
+              # Function to rotate VPN connection
+              rotate_vpn() {
+                local max_attempts=5
+                local attempt=1
+                local current_ip=$(get_current_ip)
+                
+                while [ $attempt -le $max_attempts ]; do
+                  COUNTRIES=("United_States" "Canada" "Germany" "France" "Netherlands" "Australia" "Japan" "Sweden" "Spain")
+                  RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
+                  echo "🌍 Attempt $attempt: Connecting to $RANDOM_COUNTRY"
+                  
+                  # Disconnect current connection
+                  docker exec nordvpn nordvpn disconnect
+                  sleep 5
+                  
+                  # Connect to new country
+                  docker exec nordvpn nordvpn connect $RANDOM_COUNTRY
+                  sleep 15
+                  
+                  # Check new IP
+                  local new_ip=$(get_current_ip)
+                  echo "🔎 New IP: $new_ip (Previous: $current_ip)"
+                  
+                  if [ "$new_ip" != "$current_ip" ] && [ "$new_ip" != "UNKNOWN" ]; then
+                    echo "✅ VPN rotation successful!"
+                    return 0
+                  else
+                    echo "❌ VPN rotation failed or IP unchanged. Attempt $attempt of $max_attempts"
+                    sleep 5
+                    ((attempt++))
+                  fi
+                done
+                
+                echo "❌ Failed to rotate VPN after $max_attempts attempts"
+                return 1
+              }
+              
+              # Try to rotate the VPN
+              if ! rotate_vpn; then
+                echo "❌ VPN rotation failed completely - exiting"
+                exit 1
+              fi
       
               sleep 15
       
