@@ -42,7 +42,7 @@ jobs:
   run-scraper:
     needs: build-and-push
     runs-on: ubuntu-latest
-    name: run-${{ matrix.group_name }}  # 👈 Dynamic job naming
+    name: run-${{ matrix.group.name }}  # ✅ Correctly reference the group name
 
     strategy:
       matrix:
