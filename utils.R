@@ -535,7 +535,8 @@ pb_upload_file_fr <- function (file, repo, tag, .token = gh::gh_token(), release
     body = httr::upload_file(file_path)
   )
   
-  r <- piggyback:::parse_repo(repo)
+  # r <- piggyback:::parse_repo(repo)
+  r <- strsplit(repo, "/")[[1]]
   
   if(!is.null(httr::content(rsd)$errors[[1]]$code)){
     # tag <- "EE-last_7_days"
@@ -612,7 +613,8 @@ pb_release_create_fr <- function (repo, tag, commit = NULL, name = tag,
     return(invisible(releases[tag %in% releases$tag, 
     ]))
   }
-  r <- piggyback:::parse_repo(repo)
+  # r <- piggyback:::parse_repo(repo)
+  r <- strsplit(repo, "/")[[1]]
   payload <- compact(list(tag_name = tag, target_commitish = commit, 
                           name = name, body = body, draft = draft, prerelease = prerelease))
   resp <- httr::RETRY(verb = "POST", url = glue::glue("https://api.github.com/repos/{r[[1]]}/{r[[2]]}/releases"), 
@@ -638,7 +640,8 @@ pb_info_fr <- function(repo = guess_repo(),
                        tag = NULL,
                        .token = gh::gh_token()) {
   
-  r <- piggyback:::parse_repo(repo)
+  # r <- piggyback:::parse_repo(repo)
+  r <- strsplit(repo, "/")[[1]]
   
   # get all releases
   releases <- piggyback::pb_releases(repo = repo, .token = .token, verbose = FALSE)
