@@ -46,18 +46,18 @@ jobs:
 
     strategy:
       matrix:
-        index: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]  # 👈 Define explicit indices (0 to 9)
-        group_name:
-          - "Western-Europe"
-          - "Americas"
-          - "Asia-Pacific"
-          - "Eastern-Europe"
-          - "Middle-East"
-          - "Central-Asia"
-          - "Southern-Africa"
-          - "Western-Africa"
-          - "Caribbean"
-          - "Island-Nations"
+        group:
+          - { name: "Western-Europe", index: 0 }
+          - { name: "Americas", index: 1 }
+          - { name: "Asia-Pacific", index: 2 }
+          - { name: "Eastern-Europe", index: 3 }
+          - { name: "Middle-East", index: 4 }
+          - { name: "Central-Asia", index: 5 }
+          - { name: "Southern-Africa", index: 6 }
+          - { name: "Western-Africa", index: 7 }
+          - { name: "Caribbean", index: 8 }
+          - { name: "Island-Nations", index: 9 }
+          
     env:
       GITHUB_PAT: ${{ secrets.GH_PAT }}      
       TELEGRAM_BOT_ID: ${{ secrets.TELEGRAM_BOT_ID }}
@@ -149,7 +149,7 @@ jobs:
 
       - name: Infinite Loop Until Success
         env:
-          MATRIX_INDEX: ${{ matrix.index }}  # 👈 Pass job index as environment variable
+          MATRIX_INDEX: ${{ matrix.group.index }}
         run: |
           # ✅ Use indexed arrays instead of associative arrays
           JOB_COUNTRIES=(
