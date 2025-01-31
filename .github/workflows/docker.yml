@@ -56,7 +56,6 @@ jobs:
           - { name: "Southern-Africa", index: 6 }
           - { name: "Western-Africa", index: 7 }
           - { name: "Caribbean", index: 8 }
-          - { name: "Island-Nations", index: 9 }
           
     env:
       GITHUB_PAT: ${{ secrets.GH_PAT }}      
@@ -181,8 +180,7 @@ jobs:
             "KZ TM UZ TJ KG GE AM AZ TR AF PK NP BD LK MV"
             "ZA NG KE GH MA SN RW UG MW TZ ZM ZW NA LS BW SZ AO MG MZ BI KM SC MU"
             "BF BJ BI ML MR NE TG GM GN SL LR CV ST GQ GA CG CF TD CM CI CD SO ER DJ ET EH SS"
-            "AG AI BB BS BM GD JM KN LC VC TT KY MS VG VI WF YT GP MF BL DM MQ SX"
-            "AD MC SM VA FM MH NR TV FJ CK TK CX CC AQ HM BV TF GS SH PN SB TC BN BT FK GW GY HT NI SR"
+            "AG AI BB BS BM GD JM KN LC VC TT KY MS VG VI WF YT GP MF BL DM MQ SX AD MC SM VA FM MH NR TV FJ CK TK CX CC AQ HM BV TF GS SH PN SB TC BN BT FK GW GY HT NI SR"
           )
 
           # ✅ Correct way to access array element
