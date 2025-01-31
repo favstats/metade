@@ -39,7 +39,6 @@ jobs:
           tags: ghcr.io/${{ github.repository }}/r-scraper:latest
           
           
-jobs:
   run-scraper:
     needs: build-and-push
     runs-on: ubuntu-latest
