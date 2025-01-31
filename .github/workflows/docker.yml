@@ -270,5 +270,7 @@ jobs:
               # Keep looping
               echo "⏳ Waiting 30 seconds before the next iteration..."
               sleep 30
-            done
-        
+            done  # ✅ Outer WHILE loop ends
+  
+          done  # ✅ FOR loop ends
+          
