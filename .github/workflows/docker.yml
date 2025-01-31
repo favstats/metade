@@ -16,7 +16,10 @@ jobs:
       TELEGRAM_BOT_ID: ${{ secrets.TELEGRAM_BOT_ID }}
       TELEGRAM_GROUP_ID: ${{ secrets.TELEGRAM_GROUP_ID }}
       R_LIBS_USER: /github/home/r-libs
-
+    permissions:
+      contents: read
+      packages: write
+      
     steps:
       - name: Setup - Checkout repo
         uses: actions/checkout@v4
