@@ -23,6 +23,20 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
+          
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository }}/r-scraper:latest
 
       - name: Create directories
         run: |
@@ -30,14 +44,6 @@ jobs:
           sudo chmod 777 /github/home/r-libs
           mkdir -p data historic targeting
           chmod -R 777 .
-
-      - name: Restore R Package Cache
-        uses: actions/cache@v3
-        with:
-          path: /github/home/r-libs
-          key: ${{ runner.os }}-r-packages-${{ hashFiles('**/DESCRIPTION') }}
-          restore-keys: |
-            ${{ runner.os }}-r-packages-
 
       # Set up Docker networking
       - name: Setup Docker Network
@@ -117,72 +123,93 @@ jobs:
           PREV_IP=$(get_current_ip)
           echo "🌍 Initial IP: $PREV_IP"
 
-          COUNTRIES=("United_States" "Canada" "Germany" "France" "Netherlands" 
-                     "Australia" "Japan" "Sweden" "Spain" "Italy" "South_Korea")
-
+          COUNTRIES=("Albania" "Algeria" "Andorra" "Angola" "Argentina" "Armenia"
+                     "Australia" "Austria" "Azerbaijan" "Bahamas" "Bahrain" "Bangladesh" "Belgium"
+                     "Belize" "Bermuda" "Bhutan" "Bolivia" "Bosnia_And_Herzegovina" "Brazil"
+                     "Brunei_Darussalam" "Bulgaria" "Cambodia" "Canada" "Cayman_Islands" "Chile"
+                     "Colombia" "Costa_Rica" "Croatia" "Cyprus" "Czech_Republic" "Denmark"
+                     "Dominican_Republic" "Ecuador" "Egypt" "El_Salvador" "Estonia" "Finland"
+                     "France" "Georgia" "Germany" "Ghana" "Greece" "Greenland" "Guam"
+                     "Guatemala" "Honduras" "Hong_Kong" "Hungary" "Iceland" "India" "Indonesia"
+                     "Ireland" "Isle_Of_Man" "Israel" "Italy" "Jamaica" "Japan" "Jersey"
+                     "Jordan" "Kazakhstan" "Kenya" "Kuwait" "Lao_Peoples_Democratic_Republic"
+                     "Latvia" "Lebanon" "Liechtenstein" "Lithuania" "Luxembourg" "Malaysia"
+                     "Malta" "Mexico" "Moldova" "Monaco" "Mongolia" "Montenegro" "Morocco"
+                     "Mozambique" "Myanmar" "Nepal" "Netherlands" "New_Zealand" "Nigeria"
+                     "North_Macedonia" "Norway" "Pakistan" "Panama" "Papua_New_Guinea"
+                     "Paraguay" "Peru" "Philippines" "Poland" "Portugal" "Puerto_Rico"
+                     "Romania" "Senegal" "Serbia" "Singapore" "Slovakia" "Slovenia"
+                     "South_Africa" "South_Korea" "Spain" "Sri_Lanka" "Sweden" "Switzerland"
+                     "Taiwan" "Thailand" "Trinidad_And_Tobago" "Tunisia" "Turkey" "Ukraine"
+                     "United_Arab_Emirates" "United_Kingdom" "United_States" "Uruguay"
+                     "Uzbekistan" "Venezuela" "Vietnam")
+                     
           while true; do
             current_time=$(date +%s)
             elapsed_time=$((current_time - start_time))
-            
+            elapsed_time_hr=$((elapsed_time / 3600))
+            elapsed_time_min=$(((elapsed_time % 3600) / 60))
+            elapsed_time_sec=$((elapsed_time % 60))
+
+            echo "🕒 Time elapsed: ${elapsed_time_hr}h ${elapsed_time_min}m ${elapsed_time_sec}s"
+
             # Stop after 5 hours (GitHub Actions limit)
             if [ "$elapsed_time" -ge 18000 ]; then
-              echo "🕒 5-hour time limit reached. Exiting."
+              echo "🚫 5-hour time limit reached. Exiting."
               break
             fi
 
-            echo "🚀 Running get_audiences.R..."
+            # 🔄 **VPN Rotation Before Running get_audiences.R**
+            echo "🔄 Rotating VPN before running get_audiences.R..."
+
+            while true; do
+              RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
+              echo "🌍 Connecting to: $RANDOM_COUNTRY"
+              
+              # Disconnect and force a reset
+              docker exec nordvpn nordvpn disconnect
+              sleep 5
+              
+              # Connect to new random country
+              docker exec nordvpn nordvpn connect "$RANDOM_COUNTRY"
+              sleep 10  
+
+              # Ensure VPN is fully connected before proceeding
+              for i in {1..5}; do
+                VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
+                echo "VPN Status Output: $VPN_STATUS"
+
+                if echo "$VPN_STATUS" | grep -q "Connected"; then
+                  echo "✅ VPN Connected!"
+                  break
+                fi
+
+                echo "⏳ Waiting for VPN to establish... Attempt $i/5"
+                sleep 5
+              done
+
+              # Get the new IP
+              NEW_IP=$(get_current_ip)
+              echo "🔎 New IP: $NEW_IP"
+
+              if [ "$NEW_IP" != "$PREV_IP" ] && [ "$NEW_IP" != "UNKNOWN" ]; then
+                echo "✅ VPN Rotation Successful! New IP: $NEW_IP"
+                PREV_IP=$NEW_IP
+                break  # Exit VPN rotation loop
+              else
+                echo "❌ VPN IP did not change. Retrying another country..."
+                sleep 5
+              fi
+            done
+
+            # 🚀 **Run get_audiences.R INSIDE the WHILE LOOP**
+            echo "🚀 Running get_audiences.R inside r-dev..."
             docker exec r-dev Rscript /workspace/get_audiences.R
             EXIT_CODE=$?
 
-            if [ -f status.txt ] && grep -q "VPN_ROTATION_NEEDED" status.txt; then
-              echo "🔄 VPN Rotation Needed! Switching server..."
-              
-              while true; do
-                RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
-                echo "🌍 Connecting to: $RANDOM_COUNTRY"
-                
-                # Disconnect and force a reset
-                docker exec nordvpn nordvpn disconnect
-                sleep 5
-                
-                # Connect to new random country
-                docker exec nordvpn nordvpn connect "$RANDOM_COUNTRY"
-                sleep 10  
+            echo "🔄 Completed one iteration. Restarting VPN change + get_audiences.R..."
 
-                # Ensure VPN is fully connected before proceeding
-                for i in {1..5}; do
-                  VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
-                  echo "VPN Status Output: $VPN_STATUS"
-
-                  if echo "$VPN_STATUS" | grep -q "Connected"; then
-                    echo "✅ VPN Connected!"
-                    break
-                  fi
-
-                  echo "⏳ Waiting for VPN to establish... Attempt $i/5"
-                  sleep 5
-                done
-
-                # Get the new IP
-                NEW_IP=$(get_current_ip)
-                echo "🔎 New IP: $NEW_IP"
-
-                if [ "$NEW_IP" != "$PREV_IP" ] && [ "$NEW_IP" != "UNKNOWN" ]; then
-                  echo "✅ VPN Rotation Successful! New IP: $NEW_IP"
-                  PREV_IP=$NEW_IP
-                  break  # Exit VPN rotation loop
-                else
-                  echo "❌ VPN IP did not change. Retrying another country..."
-                  sleep 5
-                fi
-              done
-
-              echo "🔄 Retrying get_audiences.R after VPN change..."
-              rm status.txt  # Reset status
-              continue  # Restart the loop to re-run get_audiences.R
-            fi
-
-            # Continue looping
+            # Keep looping
             echo "⏳ Waiting 30 seconds before the next iteration..."
             sleep 30
           done

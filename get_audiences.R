@@ -342,7 +342,7 @@ for (i in seq_len(nrow(params))) {
         
         # if (Sys.info()[["effective_user"]] %in% c("fabio", "favstats")) {
         ### CHANGE ME WHEN LOCAL!
-        print(nrow(fin))
+        print(paste0(internal$page_name, ": ", nrow(fin)))
         
         # }# 
         # })
