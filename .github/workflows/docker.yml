@@ -108,6 +108,8 @@ jobs:
 
       - name: Infinite Loop Until Success
         run: |
+          start_time=$(date +%s)  # Record the start time
+          
           get_current_ip() { 
             docker exec r-dev curl -s ifconfig.me || echo "UNKNOWN"
           }
@@ -116,60 +118,68 @@ jobs:
           echo "🌍 Initial IP: $PREV_IP"
       
           while true; do
+            current_time=$(date +%s)
+            elapsed_time=$((current_time - start_time))
+            
+            # Stop after 5 hours (maximum for GitHub Actions)
+            if [ "$elapsed_time" -ge 18000 ]; then
+              echo "🕒 5-hour time limit reached. Exiting."
+              break
+            fi
+      
             echo "🚀 Running get_audiences.R..."
-            docker exec r-dev Rscript get_audiences.R
+            docker exec r-dev Rscript /workspace/get_audiences.R
             EXIT_CODE=$?
       
             if [ -f status.txt ] && grep -q "VPN_ROTATION_NEEDED" status.txt; then
-              echo "🔄 VPN Rotation Needed! Restarting VPN..."
+              echo "🔄 VPN Rotation Needed! Switching server..."
               
-              docker stop nordvpn r-dev
-              docker rm nordvpn r-dev
-      
-              COUNTRIES=("United_States" "Canada" "Germany" "France" "Netherlands" "Australia" "Japan" "Sweden" "Spain")
-              RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
-              echo "🌍 Selected VPN Country: $RANDOM_COUNTRY"
-      
-              docker run -d --name nordvpn \
-                --cap-add=NET_ADMIN \
-                --cap-add=NET_RAW \
-                --network vpn-network \
-                -e TOKEN=$NORDVPN_TOKEN \
-                -e CONNECT=$RANDOM_COUNTRY \
-                -e TECHNOLOGY=NordLynx \
-                ghcr.io/bubuntux/nordvpn
 
-              docker run -d --name r-dev \
-                --network container:nordvpn \
-                -e GITHUB_PAT=${{ secrets.GH_PAT }} \
-                -e TELEGRAM_BOT_ID=${{ secrets.TELEGRAM_BOT_ID }} \
-                -e TELEGRAM_GROUP_ID=${{ secrets.TELEGRAM_GROUP_ID }} \
-                -v ${PWD}:/workspace \
-                -v /github/home/r-libs:/r-libs \
-                ghcr.io/${{ github.repository }}/r-scraper:latest tail -f /dev/null
+              
+              COUNTRIES=("Albania" "Algeria" "Andorra" "Angola" "Argentina" "Armenia"
+              "Australia" "Austria" "Azerbaijan" "Bahamas" "Bahrain" "Bangladesh" "Belgium"
+              "Belize" "Bermuda" "Bhutan" "Bolivia" "Bosnia_And_Herzegovina" "Brazil"
+              "Brunei_Darussalam" "Bulgaria" "Cambodia" "Canada" "Cayman_Islands" "Chile"
+              "Colombia" "Costa_Rica" "Croatia" "Cyprus" "Czech_Republic" "Denmark"
+              "Dominican_Republic" "Ecuador" "Egypt" "El_Salvador" "Estonia" "Finland"
+              "France" "Georgia" "Germany" "Ghana" "Greece" "Greenland" "Guam"
+              "Guatemala" "Honduras" "Hong_Kong" "Hungary" "Iceland" "India" "Indonesia"
+                         "Ireland" "Isle_Of_Man" "Israel" "Italy" "Jamaica" "Japan" "Jersey"
+                         "Jordan" "Kazakhstan" "Kenya" "Kuwait" "Lao_Peoples_Democratic_Republic"
+                         "Latvia" "Lebanon" "Liechtenstein" "Lithuania" "Luxembourg" "Malaysia"
+                         "Malta" "Mexico" "Moldova" "Monaco" "Mongolia" "Montenegro" "Morocco"
+                         "Mozambique" "Myanmar" "Nepal" "Netherlands" "New_Zealand" "Nigeria"
+                         "North_Macedonia" "Norway" "Pakistan" "Panama" "Papua_New_Guinea"
+                         "Paraguay" "Peru" "Philippines" "Poland" "Portugal" "Puerto_Rico"
+                         "Romania" "Senegal" "Serbia" "Singapore" "Slovakia" "Slovenia"
+                         "South_Africa" "South_Korea" "Spain" "Sri_Lanka" "Sweden" "Switzerland"
+                         "Taiwan" "Thailand" "Trinidad_And_Tobago" "Tunisia" "Turkey" "Ukraine"
+                         "United_Arab_Emirates" "United_Kingdom" "United_States" "Uruguay"
+                         "Uzbekistan" "Venezuela" "Vietnam")
+              RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
+              echo "🌍 Connecting to: $RANDOM_COUNTRY"
       
-              sleep 15
+              docker exec nordvpn nordvpn disconnect
+              sleep 5
+              docker exec nordvpn nordvpn connect "$RANDOM_COUNTRY"
+              sleep 15  # Give time for VPN to establish connection
       
               NEW_IP=$(get_current_ip)
               echo "🔎 New IP: $NEW_IP"
       
               if [ "$NEW_IP" != "$PREV_IP" ] && [ "$NEW_IP" != "UNKNOWN" ]; then
-                echo "✅ Connected! New IP: $NEW_IP"
+                echo "✅ VPN Rotation Successful! New IP: $NEW_IP"
                 PREV_IP=$NEW_IP
               else
-                echo "❌ IP did not change. Retrying with another country..."
-                sleep 5
+                echo "❌ VPN IP did not change. Retrying another country..."
                 continue
               fi
       
               echo "🔄 Retrying get_audiences.R after VPN change..."
-              rm status.txt
-      
-            elif [ "$EXIT_CODE" -eq 0 ]; then
-              echo "✅ Script ran successfully! Exiting loop."
-              break
-            else
-              echo "❌ Unexpected error: $EXIT_CODE. Retrying in 30 seconds..."
-              sleep 30
+              rm status.txt  # Reset status
             fi
+      
+            # Continue looping
+            echo "⏳ Waiting 30 seconds before the next iteration..."
+            sleep 30
           done
