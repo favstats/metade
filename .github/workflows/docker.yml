@@ -151,7 +151,7 @@ jobs:
         env:
           MATRIX_INDEX: ${{ matrix.group.index }}
         run: |
-          # ✅ Use indexed arrays instead of associative arrays
+          # ✅ Use indexed arrays 
           JOB_COUNTRIES=(
             "DE FR NL BE LU SE AT FI DK IE NO CH LI IS MT CY PT ES IT GR GB BY AX GI GG JE IM FO SJ GL"
             "US CA MX BR AR CL PE CO VE UY PY PA CR DO GT SV HN BO EC BZ GF PM PR RE"
@@ -223,42 +223,48 @@ jobs:
               while true; do
                 RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
                 echo "🌍 Connecting to: $RANDOM_COUNTRY"
-                
+
+                # Store previous IP before switching VPN
+                PREV_IP=$(docker exec r-dev curl -s ifconfig.me || echo "UNKNOWN")
+                echo "🔎 Previous IP: $PREV_IP"
+
                 # Disconnect and force a reset
-                docker exec nordvpn nordvpn disconnect
+                docker exec nordvpn nordvpn disconnect || echo "No active connection."
                 sleep 5
-                
-                # Connect to new random country
+
+                # Connect to a new random country
                 docker exec nordvpn nordvpn connect "$RANDOM_COUNTRY"
                 sleep 10  
-  
-                # Ensure VPN is fully connected before proceeding
-                for i in {1..5}; do
+
+                # **Ensure VPN is fully connected before proceeding**
+                for attempt in {1..10}; do
                   VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
                   echo "VPN Status Output: $VPN_STATUS"
-  
+
                   if echo "$VPN_STATUS" | grep -q "Connected"; then
-                    echo "✅ VPN Connected!"
-                    break
+                    # Check if IP has actually changed
+                    NEW_IP=$(docker exec r-dev curl -s ifconfig.me || echo "UNKNOWN")
+                    echo "🔎 New IP: $NEW_IP"
+
+                    if [ "$NEW_IP" != "$PREV_IP" ] && [ "$NEW_IP" != "UNKNOWN" ]; then
+                      echo "✅ VPN Rotation Successful! New IP: $NEW_IP"
+                      break 2  # Exit both retry loop and main loop
+                    else
+                      echo "❌ VPN IP did not change. Retrying another country..."
+                      break  # Try a different country
+                    fi
                   fi
-  
-                  echo "⏳ Waiting for VPN to establish... Attempt $i/5"
-                  sleep 5
+
+                  echo "❌ VPN Connection Failed. Retrying in 10 seconds... (Attempt $attempt/10)"
+                  sleep 10
+
+                  # If all 10 attempts fail, try a completely new country
+                  if [ "$attempt" -eq 10 ]; then
+                    echo "🚨 Failed to connect after 10 attempts. Trying a different country..."
+                    break  # Exit inner loop to select a new VPN server
+                  fi
                 done
-  
-                # Get the new IP
-                NEW_IP=$(get_current_ip)
-                echo "🔎 New IP: $NEW_IP"
-  
-                if [ "$NEW_IP" != "$PREV_IP" ] && [ "$NEW_IP" != "UNKNOWN" ]; then
-                  echo "✅ VPN Rotation Successful! New IP: $NEW_IP"
-                  PREV_IP=$NEW_IP
-                  break  # Exit VPN rotation loop
-                else
-                  echo "❌ VPN IP did not change. Retrying another country..."
-                  sleep 5
-                fi
-              done
+              done  # VPN rotation loop ends
   
               # 🚀 **Run get_audiences.R for this country**
               echo "🚀 Running get_audiences.R inside r-dev for $CNTRY..."
