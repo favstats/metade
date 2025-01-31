@@ -170,7 +170,7 @@ jobs:
           
           echo "Processing countries: $COUNTRY_JOBS"
 
-          for CNTRY in COUNTRY_JOBS; do
+          for CNTRY in $COUNTRY_JOBS; do 
             echo "Processing country: $CNTRY"
             start_time=$(date +%s)  # Record the start time
   
