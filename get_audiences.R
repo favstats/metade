@@ -22,7 +22,7 @@ eu_countries <- c("AT", "BE", "BG", "CY", "CZ", "DK", "EE", "ES", "FI",
 full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/main/cntry_list.rds") %>%
   rename(iso2c = iso2, country = cntry) %>%
   sample_n(n()) %>% 
-  mutate(iso2c = fct_relevel(iso2c, c("DE",eu_countries))) %>% 
+  mutate(iso2c = fct_relevel(iso2c, c("NL",eu_countries))) %>% 
   arrange(iso2c)
 
 # Create all combinations of TF and countries
