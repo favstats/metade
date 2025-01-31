@@ -364,7 +364,7 @@ for (i in seq_len(nrow(params))) {
       
       
       scraper_for_loop <- function(data, time = tf) {
-        data <- slice(1:100)
+        data <- data %>% sample_n(100)
         results <- list()  # Store results
         
         for (i in seq_len(nrow(data))) {
