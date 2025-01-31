@@ -22,12 +22,11 @@ eu_countries <- c("AT", "BE", "BG", "CY", "CZ", "DK", "EE", "ES", "FI",
 full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/main/cntry_list.rds") %>%
   rename(iso2c = iso2, country = cntry) %>%
   sample_n(n()) %>% 
-  mutate(iso2c = fct_relevel(iso2c, c(eu_countries))) %>% 
+  mutate(iso2c = fct_relevel(iso2c, c("DE",eu_countries))) %>% 
   arrange(iso2c)
 
 # Create all combinations of TF and countries
-params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry) %>% 
-  filter(the_cntry %in% c("DE", "MX", "US"))
+params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry) 
 
 # Loop over each (timeframe, country) pair
 for (i in seq_len(nrow(params))) {
@@ -64,14 +63,16 @@ for (i in seq_len(nrow(params))) {
       source("utils.R")
       
       
-      library(httr)
-      library(httr2)
-      library(tidyverse)
-      library(lubridate)
-      library(rvest)
-      library(piggyback)
-      library(openssl)
-      library(jsonlite)
+      suppressMessages(suppressPackageStartupMessages({
+        library(httr)
+        library(httr2)
+        library(tidyverse)
+        library(lubridate)
+        library(rvest)
+        library(piggyback)
+        library(openssl)
+        library(jsonlite)
+      }))
       
       
 
@@ -342,7 +343,7 @@ for (i in seq_len(nrow(params))) {
         
         # if (Sys.info()[["effective_user"]] %in% c("fabio", "favstats")) {
         ### CHANGE ME WHEN LOCAL!
-        print(paste0(internal$page_name, ": ", nrow(fin)))
+        # print(paste0(internal$page_name, ": ", nrow(fin)))
         
         # }# 
         # })
@@ -366,8 +367,8 @@ for (i in seq_len(nrow(params))) {
       scraper_for_loop <- function(data, time = tf) {
         
         ### test stuff
-        data <- data %>% sample_n(100)
-        writeLines("VPN_ROTATION_NEEDED", "status.txt")  # Save status
+        # data <- data %>% sample_n(100)
+        # writeLines("VPN_ROTATION_NEEDED", "status.txt")  # Save status
         
         results <- list()  # Store results
         

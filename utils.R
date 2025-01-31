@@ -540,7 +540,7 @@ pb_upload_file_fr <- function (file, repo, tag, .token = gh::gh_token(), release
   
   if(!is.null(httr::content(rsd)$errors[[1]]$code)){
     # tag <- "EE-last_7_days"
-    print(httr::content(rsd)$errors[[1]])
+    # print(httr::content(rsd)$errors[[1]])
     
     df <- releases[releases$tag == tag,]
     
