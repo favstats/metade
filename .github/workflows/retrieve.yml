@@ -144,6 +144,20 @@ jobs:
             -v /github/home/r-libs:/r-libs \
             ghcr.io/${{ github.repository }}/r-scraper:latest tail -f /dev/null
 
+      - name: Wait for VPN to Establish
+        run: |
+          for i in {1..10}; do
+            VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
+            echo "VPN Status Output: $VPN_STATUS"
+
+            if echo "$VPN_STATUS" | grep -q "Connected"; then
+              echo "✅ VPN Connected!"
+              break
+            fi
+
+            echo "⏳ Waiting for VPN... Attempt $i/10"
+            sleep 3
+          done
 
       - name: Infinite Loop Until Success
         env:
@@ -238,16 +252,22 @@ jobs:
               
                 # Attempt to connect, retrying up to 100 times if connection fails
                 for attempt in {1..100}; do
-                  echo "🔄 Attempting to connect to: $RANDOM_COUNTRY (Attempt $attempt/10)"
+                  echo "🔄 Attempting to connect to: $RANDOM_COUNTRY (Attempt $attempt/100)"
                   CONNECT_OUTPUT=$(docker exec nordvpn nordvpn connect "$RANDOM_COUNTRY" 2>&1)
                   
+                  echo "Past Connection Attempt. Now What?"
+
                   if echo "$CONNECT_OUTPUT" | grep -q "Whoops!"; then
                     echo "❌ VPN Connection Failed: $CONNECT_OUTPUT"
                     sleep $((5**$attempt))  # Wait before retrying
                   else
+                    echo "No _Whoops?_ Sleeping for 10..."
+
                     sleep 10  # Give it time to stabilize
-              
+                    
+                    echo "Check if VPN is actually connected"
                     # Check if VPN is actually connected
+                    echo "❌ VPN Connection Failed: $CONNECT_OUTPUT"
                     VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
                     echo "VPN Status Output: $VPN_STATUS"
               
