@@ -599,6 +599,12 @@ pb_upload_file_fr <- function (file, repo, tag, .token = gh::gh_token(), release
   return(rsd)
 }
 
+if_not_null <- function(x, expr, default = FALSE) {
+  if (!is.null(x)) {
+    return(eval(expr))
+  }
+  return(default)
+}
 
 
 pb_release_create_fr <- function (repo, tag, commit = NULL, name = tag, 

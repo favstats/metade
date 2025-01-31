@@ -2,14 +2,6 @@ library(tidyverse)
 
 writeLines("INIT", "status.txt")  # Save status
 
-if_not_null <- function(x, expr, default = FALSE) {
-  if (!is.null(x)) {
-    return(eval(expr))
-  }
-  return(default)
-}
-
-
 # Define time frame values
 tf_values <- c("7", "30", "90")
 
@@ -19,11 +11,16 @@ eu_countries <- c("AT", "BE", "BG", "CY", "CZ", "DK", "EE", "ES", "FI",
                   "PL", "PT", "RO", "SE", "SI", "SK", "NZ",  "MX",
                   "CA", "AU", "US", "DE") %>% sample(31)
 
+outcome <- commandArgs(trailingOnly = TRUE)
+
+print(outcome)
+
 full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/main/cntry_list.rds") %>%
   rename(iso2c = iso2, country = cntry) %>%
   sample_n(n()) %>% 
   mutate(iso2c = fct_relevel(iso2c, c("NL",eu_countries))) %>% 
-  arrange(iso2c)
+  arrange(iso2c) %>% 
+  filter(the_cntry == outcome)
 
 # Create all combinations of TF and countries
 params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry) 
@@ -392,12 +389,7 @@ for (i in seq_len(nrow(params))) {
             return(NULL)  # Return NULL on failure
           })
           
-          if_not_null <- function(x, expr, default = FALSE) {
-            if (!is.null(x)) {
-              return(eval(expr))
-            }
-            return(default)
-          }
+
           
           if (
             if_not_null(the_error, str_detect(str_to_lower(the_error), "log in")) | 
