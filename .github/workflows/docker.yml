@@ -150,6 +150,7 @@ jobs:
       - name: Infinite Loop Until Success
         env:
           MATRIX_INDEX: ${{ matrix.group.index }}
+        continue-on-error: true  # ✅ Ensures one job failure doesn’t fail all others
         run: |
           # ✅ Use indexed arrays 
           JOB_COUNTRIES=(
