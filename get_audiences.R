@@ -27,7 +27,7 @@ full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/mai
 
 # Create all combinations of TF and countries
 params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry) %>% 
-  filter(the_cntry == "MX")
+  filter(the_cntry %in% c("DE", "MX", "US"))
 
 # Loop over each (timeframe, country) pair
 for (i in seq_len(nrow(params))) {
@@ -364,7 +364,7 @@ for (i in seq_len(nrow(params))) {
       
       
       scraper_for_loop <- function(data, time = tf) {
-        data <- data %>% sample_n(100)
+        # data <- data %>% sample_n(100)
         results <- list()  # Store results
         
         for (i in seq_len(nrow(data))) {
