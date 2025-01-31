@@ -5,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 8 * * *'  # Runs every day at 08:00 UTC
+    - cron: '0 */6 * * *'  # Runs every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)
   workflow_dispatch:
 
 jobs:
@@ -233,14 +233,14 @@ jobs:
                 docker exec nordvpn nordvpn disconnect || echo "No active connection."
                 sleep 5
               
-                # Attempt to connect, retrying up to 10 times if connection fails
-                for attempt in {1..10}; do
+                # Attempt to connect, retrying up to 100 times if connection fails
+                for attempt in {1..100}; do
                   echo "🔄 Attempting to connect to: $RANDOM_COUNTRY (Attempt $attempt/10)"
                   CONNECT_OUTPUT=$(docker exec nordvpn nordvpn connect "$RANDOM_COUNTRY" 2>&1)
                   
                   if echo "$CONNECT_OUTPUT" | grep -q "Whoops!"; then
                     echo "❌ VPN Connection Failed: $CONNECT_OUTPUT"
-                    sleep 5  # Wait before retrying
+                    sleep $((5**$attempt))  # Wait before retrying
                   else
                     sleep 10  # Give it time to stabilize
               
@@ -263,9 +263,9 @@ jobs:
                     fi
                   fi
               
-                  # If all 10 attempts fail, try a completely new country
-                  if [ "$attempt" -eq 10 ]; then
-                    echo "🚨 Failed to connect after 10 attempts. Trying a different country..."
+                  # If all 100 attempts fail, try a completely new country
+                  if [ "$attempt" -eq 100 ]; then
+                    echo "🚨 Failed to connect after 100 attempts. Trying a different country..."
                     break  # Exit inner loop and select a new VPN server
                   fi
                 done  # VPN retry loop ends
