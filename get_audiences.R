@@ -36,7 +36,7 @@ for (i in seq_len(nrow(params))) {
   
   print(glue::glue("🔄 Processing: {the_cntry} - Last {tf} Days"))
   
-  if(readLines("status.txt")!="VPN_ROTATION_NEEDED"){
+  # if(readLines("status.txt")!="VPN_ROTATION_NEEDED"){
     
   
   consecutive_error_count <- 0
@@ -970,13 +970,14 @@ for (i in seq_len(nrow(params))) {
     })
     
     
+    print(glue::glue("🔄 Processed: {the_cntry} - Last {tf} Days"))
     
     
     print("################ VERY END ################")
     
     
-  } else {
-    break
-  }
+  # } else {
+  #   break
+  # }
   
 }
