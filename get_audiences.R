@@ -19,24 +19,32 @@ full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/mai
   rename(iso2c = iso2, country = cntry) %>%
   sample_n(n()) %>% 
   mutate(iso2c = fct_relevel(iso2c, c("NL",eu_countries))) %>% 
-  arrange(iso2c) %>% 
-  filter(the_cntry == outcome)
+  arrange(iso2c) 
+
+
 
 # Create all combinations of TF and countries
-params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry) 
+params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry) %>% 
+  filter(the_cntry == outcome)
 
-# Loop over each (timeframe, country) pair
-for (i in seq_len(nrow(params))) {
-  
-  tf <- params$tf[i]
-  the_cntry <- params$the_cntry[i]
-  
-  print(glue::glue("🔄 Processing: {the_cntry} - Last {tf} Days"))
-  
-  # if(readLines("status.txt")!="VPN_ROTATION_NEEDED"){
+skip <- F
+if(nrow(params)==0) skip <- T
+
+if(skip){
+  print(paste0(outcome, " not found. Skipping"))
+} else {
+  # Loop over each (timeframe, country) pair
+  for (i in seq_len(nrow(params))) {
     
-  
-  consecutive_error_count <- 0
+    tf <- params$tf[i]
+    the_cntry <- params$the_cntry[i]
+    
+    print(glue::glue("🔄 Processing: {the_cntry} - Last {tf} Days"))
+    
+    # if(readLines("status.txt")!="VPN_ROTATION_NEEDED"){
+    
+    
+    consecutive_error_count <- 0
     
     try({
       
@@ -72,7 +80,7 @@ for (i in seq_len(nrow(params))) {
       }))
       
       
-
+      
       
       
       print("################ CHECK LATEST REPORT ################")
@@ -300,7 +308,7 @@ for (i in seq_len(nrow(params))) {
         
         # debugonce(get_page_insights)  
         # get_page_insights("106359662726593")
-          
+        
         
         # if(is.null(fin$error)){
         
@@ -327,7 +335,7 @@ for (i in seq_len(nrow(params))) {
             fin <- tibble(internal_id = internal$page_id, no_data = T, error = fin$error) %>%
               mutate(tstamp = tstamp)
           }
-
+          
           # }
         } else {
           # print("kkk")
@@ -389,7 +397,7 @@ for (i in seq_len(nrow(params))) {
             return(NULL)  # Return NULL on failure
           })
           
-
+          
           
           if (
             if_not_null(the_error, str_detect(str_to_lower(the_error), "log in")) | 
@@ -412,7 +420,7 @@ for (i in seq_len(nrow(params))) {
         if (length(results) > 0) {
           final_result <- bind_rows(results) %>% mutate_all(as.character)        
           
-
+          
           return(final_result)
         } else {
           return(tibble())  # Return empty tibble if no data
@@ -968,8 +976,10 @@ for (i in seq_len(nrow(params))) {
     print("################ VERY END ################")
     
     
-  # } else {
-  #   break
-  # }
+    # } else {
+    #   break
+    # }
+    
+  }
   
 }

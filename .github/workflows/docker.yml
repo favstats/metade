@@ -39,12 +39,25 @@ jobs:
           tags: ghcr.io/${{ github.repository }}/r-scraper:latest
           
           
+jobs:
   run-scraper:
     needs: build-and-push
     runs-on: ubuntu-latest
+    name: run-${{ matrix.group_name }}  # 👈 Dynamic job naming
+
     strategy:
       matrix:
-        job_index: [1,2,3,4,5,6,7,8,9,10]
+        group_name:
+          - "Western-Europe"
+          - "Americas"
+          - "Asia-Pacific"
+          - "Eastern-Europe"
+          - "Middle-East"
+          - "Central-Asia"
+          - "Southern-Africa"
+          - "Western-Africa"
+          - "Caribbean"
+          - "Island-Nations"
     env:
       GITHUB_PAT: ${{ secrets.GH_PAT }}      
       TELEGRAM_BOT_ID: ${{ secrets.TELEGRAM_BOT_ID }}
@@ -59,20 +72,6 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
-          
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ghcr.io/${{ github.repository }}/r-scraper:latest
 
       - name: Create directories
         run: |
@@ -153,38 +152,38 @@ jobs:
           declare -A JOB_COUNTRIES
           
           # 1. Western & Central Europe (Includes Germany)
-          JOB_COUNTRIES[1]="DE FR NL BE LU SE AT FI DK IE NO CH LI IS MT CY PT ES IT GR"
-          
+          JOB_COUNTRIES[1]="DE FR NL BE LU SE AT FI DK IE NO CH LI IS MT CY PT ES IT GR GB BY AX GI GG JE IM FO SJ GL"
+
           # 2. North & South America
-          JOB_COUNTRIES[2]="US CA MX BR AR CL PE CO VE UY PY PA CR DO GT SV HN BO EC"
-          
+          JOB_COUNTRIES[2]="US CA MX BR AR CL PE CO VE UY PY PA CR DO GT SV HN BO EC BZ GF PM PR RE"
+
           # 3. Asia-Pacific (East Asia & Oceania)
-          JOB_COUNTRIES[3]="AU NZ JP KR SG HK TW MY VN PH TH MM KH LA TL PG KI TO WS VU"
-          
+          JOB_COUNTRIES[3]="AU NZ JP KR SG HK TW MY VN PH TH MM KH LA TL PG KI TO WS VU ID IN CN MO MN MP NC NU NF PW GU UM"
+
           # 4. Eastern Europe & Baltic States
-          JOB_COUNTRIES[4]="PL CZ SK HU BG RO SI HR EE LV LT MD MK BA RS AL ME XK UA"
-          
+          JOB_COUNTRIES[4]="PL CZ SK HU BG RO SI HR EE LV LT MD MK BA RS AL ME XK UA RU"
+
           # 5. Middle East & North Africa
-          JOB_COUNTRIES[5]="EG SA AE QA KW JO IL LB OM IQ SY PS YE DZ MA TN LY BH"
-          
+          JOB_COUNTRIES[5]="EG SA AE QA KW JO IL LB OM IQ SY PS YE DZ MA TN LY BH IR SD"
+
           # 6. Central Asia & Caucasus
-          JOB_COUNTRIES[6]="KZ TM UZ TJ KG GE AM AZ TR IR AF PK NP BD LK MV"
-          
+          JOB_COUNTRIES[6]="KZ TM UZ TJ KG GE AM AZ TR AF PK NP BD LK MV"
+
           # 7. Sub-Saharan Africa (Southern & Eastern)
-          JOB_COUNTRIES[7]="ZA NG KE GH MA SN RW UG MW TZ ZM ZW NA LS BW SZ"
-          
+          JOB_COUNTRIES[7]="ZA NG KE GH MA SN RW UG MW TZ ZM ZW NA LS BW SZ AO MG MZ BI KM SC MU"
+
           # 8. Sub-Saharan Africa (Western & Central)
-          JOB_COUNTRIES[8]="BF BJ BI ML MR NE TG GM GN SL LR CV ST GQ GA CG CF TD"
-          
+          JOB_COUNTRIES[8]="BF BJ BI ML MR NE TG GM GN SL LR CV ST GQ GA CG CF TD CM CI CD SO ER DJ ET EH SS"
+
           # 9. Caribbean & Small Island Nations
-          JOB_COUNTRIES[9]="AG AI BB BS BM GD JM KN LC VC TT KY MS VG VI WF YT"
-          
+          JOB_COUNTRIES[9]="AG AI BB BS BM GD JM KN LC VC TT KY MS VG VI WF YT GP MF BL DM MQ SX"
+
           # 10. Smaller & Unclassified Nations
-          JOB_COUNTRIES[10]="AD MC SM VA FM MH NR PW TV FJ NU CK TK"
+          JOB_COUNTRIES[10]="AD MC SM VA FM MH NR TV FJ CK TK CX CC AQ HM BV TF GS SH PN SB TC BN BT FK GW GY HT NI SR"
           
           COUNTRY_JOBS="${JOB_COUNTRIES[${{ matrix.job_index }}]}"
           
-          echo "Running for countries: COUNTRY_JOBS"
+          echo "Processing countries: $COUNTRY_JOBS"
 
           for CNTRY in COUNTRY_JOBS; do
             echo "Processing country: $CNTRY"
