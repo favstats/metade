@@ -217,9 +217,15 @@ jobs:
                 echo "🚫 5-hour time limit reached. Exiting."
                 break
               fi
+              
+              # 🚀 **Run get_audiences.R for this country**
+              echo "🚀 Running get_audiences.R inside r-dev for $CNTRY..."
+              docker exec r-dev Rscript /workspace/get_audiences.R $CNTRY
+              EXIT_CODE=$?
   
-              # 🔄 **VPN Rotation Before Running get_audiences.R**
-              echo "🔄 Rotating VPN before running get_audiences.R..."
+  
+              # 🔄 **VPN Rotation after Running get_audiences.R**
+              echo "🔄 Rotating VPN after running get_audiences.R..."
   
               while true; do
                 RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
@@ -271,11 +277,7 @@ jobs:
                 done  # VPN retry loop ends
               done  # VPN rotation loop ends
   
-              # 🚀 **Run get_audiences.R for this country**
-              echo "🚀 Running get_audiences.R inside r-dev for $CNTRY..."
-              docker exec r-dev Rscript /workspace/get_audiences.R $CNTRY
-              EXIT_CODE=$?
-  
+
               echo "🔄 Completed one iteration. Restarting VPN change + get_audiences.R..."
   
               # Keep looping
