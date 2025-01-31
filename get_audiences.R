@@ -364,7 +364,11 @@ for (i in seq_len(nrow(params))) {
       
       
       scraper_for_loop <- function(data, time = tf) {
-        # data <- data %>% sample_n(100)
+        
+        ### test stuff
+        data <- data %>% sample_n(100)
+        writeLines("VPN_ROTATION_NEEDED", "status.txt")  # Save status
+        
         results <- list()  # Store results
         
         for (i in seq_len(nrow(data))) {
