@@ -253,8 +253,10 @@ jobs:
                 # Attempt to connect, retrying up to 100 times if connection fails
                 for attempt in {1..100}; do
                   echo "🔄 Attempting to connect to: $RANDOM_COUNTRY (Attempt $attempt/100)"
+                  set +e  # Disable immediate exit on error
                   CONNECT_OUTPUT=$(docker exec nordvpn nordvpn connect "$RANDOM_COUNTRY" 2>&1)
-                  
+                  EXIT_CODE=$?  # Capture exit code
+                  set -e  # Re-enable immediate exit on error                  
                   echo "Past Connection Attempt. Now What?"
 
                   if echo "$CONNECT_OUTPUT" | grep -q "Whoops!"; then
