@@ -147,6 +147,8 @@ jobs:
           fi
 
       - name: Infinite Loop Until Success
+        env:
+          MATRIX_INDEX: ${{ matrix.job_index }}  # 👈 Pass matrix index as environment variable
         run: |
           declare -A JOB_COUNTRIES
           
@@ -180,7 +182,8 @@ jobs:
           # 10. Smaller & Unclassified Nations
           JOB_COUNTRIES[10]="AD MC SM VA FM MH NR TV FJ CK TK CX CC AQ HM BV TF GS SH PN SB TC BN BT FK GW GY HT NI SR"
           
-          COUNTRY_JOBS="${JOB_COUNTRIES[${{ matrix.job_index }}]}"
+          # ✅ Reference MATRIX_INDEX correctly
+          COUNTRY_JOBS="${JOB_COUNTRIES[$MATRIX_INDEX]}"
           
           echo "Processing countries: $COUNTRY_JOBS"
 
