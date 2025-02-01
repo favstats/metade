@@ -38,6 +38,7 @@ params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrang
 
 try({
   the_result <- read_csv("the_result.csv")
+  print(the_result)
 })
 
 skip <- F
