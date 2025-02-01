@@ -46,7 +46,7 @@ try({
   
 })
 
-if(exists("the_result")){
+if(!exists("the_result")){
   remove_that <- tibble(the_cntry = "XX", tf = "0")
 }
 
