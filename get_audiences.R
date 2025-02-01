@@ -810,11 +810,30 @@ if(skip){
       report_status <- ifelse(report_matched, "✅ Yes", "❌ No")
       
       
-      if(page_ids_in_togetstuff==nrow(togetstuff) | new_rows == 0){
+      # 🛑 Decision: Should the workflow continue?
+      if (page_ids_in_togetstuff == nrow(togetstuff) | new_rows == 0) {
         should_continue <- update_workflow_schedule(F)
+        reason <- if (page_ids_in_togetstuff == nrow(togetstuff)) {
+          "🔴 All required Page IDs were already retrieved, nothing new to check."
+        } else {
+          "🔴 No new Page IDs were added in this run, no updates needed."
+        }
       } else {
         should_continue <- update_workflow_schedule(T)
+        reason <- if (new_rows > 0) {
+          "🟢 New Page IDs were added, requiring additional runs."
+        } else {
+          "🟢 Some Page IDs are still missing, continuing the process."
+        }
       }
+      
+      # ✅ Log the decision explicitly
+      print(glue::glue(
+        "📌 *Decision to Continue: {should_continue}*\n",
+        "   └ 🎯 *Reason:* {reason}\n",
+        "   └ 🔍 Page IDs Checked in Report: {page_ids_in_togetstuff} / {nrow(togetstuff)}\n",
+        "   └ ➕ New Page IDs Found: {new_rows}\n"
+      ))
       
       
       if (should_continue) {
