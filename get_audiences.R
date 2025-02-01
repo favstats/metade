@@ -36,7 +36,8 @@ try({
   remove_that <- the_result %>% 
     filter(!should_continue) %>% 
     count(cntry, the_tf) %>% 
-    rename(the_cntry = cntry, tf = the_tf)
+    rename(the_cntry = cntry, tf = the_tf) %>% 
+    mutate_all(as.character)
   
   print(the_result)
   print(remove_that)
@@ -54,7 +55,7 @@ if(!exists("the_result")){
 # Create all combinations of TF and countries
 params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry) %>% 
   filter(the_cntry %in% outcome) %>% 
-  anti_join(remove_that)
+  anti_join(remove_that) 
 
 skip <- F
 if(nrow(params)==0) skip <- T
