@@ -32,11 +32,18 @@ full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/mai
 
 try({
   the_result <- read_csv("the_result.csv")
+  
+  remove_that <- the_result %>% 
+    filter(!should_continue) %>% 
+    count(cntry, the_tf) %>% 
+    rename(the_cntry = cntry, tf = the_tf)
+  
   print(the_result)
+  print(remove_that)
+  
 })
 
-remove_that <- the_result %>% filter(!should_continue) %>% count(cntry, the_tf) %>% 
-  rename(the_cntry = cntry, tf = the_tf)
+
 
 # Create all combinations of TF and countries
 params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry) %>% 
