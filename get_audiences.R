@@ -16,6 +16,14 @@ outcome <- commandArgs(trailingOnly = TRUE)
 
 print(outcome)
 
+outcome <- outcome %>% 
+  str_split(" ") %>% 
+  unlist() %>% 
+  str_trim()
+
+print(outcome)
+
+
 full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/main/cntry_list.rds") %>%
   rename(iso2c = iso2, country = cntry) %>%
   sample_n(n()) %>% 
@@ -26,7 +34,7 @@ full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/mai
 
 # Create all combinations of TF and countries
 params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry) %>% 
-  filter(the_cntry == outcome)
+  filter(the_cntry %in% outcome)
 
 try({
   the_result <- read_csv("the_result.csv")

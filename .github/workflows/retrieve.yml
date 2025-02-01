@@ -232,7 +232,7 @@ jobs:
               
               # 🚀 **Run get_audiences.R for this country**
               echo "🚀 Running get_audiences.R inside r-dev for $CNTRY..."
-              docker exec r-dev Rscript /workspace/get_audiences.R $CNTRY
+              docker exec r-dev Rscript /workspace/get_audiences.R $COUNTRY_JOBS
               EXIT_CODE=$?
   
   
