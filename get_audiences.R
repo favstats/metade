@@ -225,6 +225,7 @@ if(skip){
       }
       
       if(!status$should_continue){
+        print("ABBRUCH: This DS already passed a couple of times.")
         break
       }
       
