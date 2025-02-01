@@ -32,23 +32,17 @@ full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/mai
 
 try({
   the_result <- read_csv("the_result.csv")
-  
-  remove_that <- the_result %>% 
-    filter(!should_continue) %>% 
-    count(cntry, the_tf) %>% 
-    rename(the_cntry = cntry, tf = the_tf)
-  
+
   print(the_result)
-  print(remove_that)
-  
+
 })
+
 
 
 
 # Create all combinations of TF and countries
 params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry) %>% 
-  filter(the_cntry %in% outcome) %>% 
-  anti_join(remove_that)
+  filter(the_cntry %in% outcome)
 
 skip <- F
 if(nrow(params)==0) skip <- T
@@ -412,25 +406,32 @@ if(skip){
       
       
       
-      scraper_for_loop <- function(data, time = tf) {
+      scraper_for_loop <- function(data, time = tf, ds = new_ds, cntry = the_cntry) {
+        tried_pages_file <- "tried_pages.csv"
         
-        ### test stuff
-        # data <- data %>% sample_n(100)
-        # writeLines("VPN_ROTATION_NEEDED", "status.txt")  # Save status
+        # Read previously tried combinations
+        if (file.exists(tried_pages_file)) {
+          tried_pages <- read_csv(tried_pages_file, col_types = cols(.default = "c"))
+        } else {
+          tried_pages <- tibble(ds = character(), cntry = character(), tf = character(), page_id = character())
+        }
+        
+        # Identify already tried pages for this specific ds, cntry, and timeframe
+        tried_subset <- tried_pages %>% filter(ds == !!ds, cntry == !!cntry, tf == !!time)
         
         results <- list()  # Store results
+        new_tried_rows <- tibble()  # To store newly tried combinations
         
         for (i in seq_len(nrow(data))) {
           internal <- data[i, , drop = FALSE]  # Extract row as a tibble
           
-          # try({
-          #   # Print status update every 25% of data processed
-          #   if ((which(scrape_dat$page_id == internal$page_id) %% round(nrow(scrape_dat)/4, -1)) == 0) {
-          #     print(paste0(internal$page_name, ": ", round(which(scrape_dat$page_id == internal$page_id)/nrow(scrape_dat) * 100, 2), "% complete"))
-          #   }
-          # })
-          the_error <- "no error"
+          # Skip if this (ds, cntry, tf, page_id) has already been processed
+          if (internal$page_id %in% tried_subset$page_id) {
+            print(glue::glue("⏩ Skipping already processed: {ds}, {cntry}, {time}, {internal$page_id}"))
+            next
+          }
           
+          the_error <- "no error"
           result <- tryCatch({
             # Call scraper function
             scraper(internal, time = time)
@@ -439,8 +440,6 @@ if(skip){
             the_error <<- e$message
             return(NULL)  # Return NULL on failure
           })
-          
-          
           
           if (
             if_not_null(the_error, str_detect(str_to_lower(the_error), "log in")) | 
@@ -451,19 +450,24 @@ if(skip){
             break  # Stop execution
           }
           
-          # print(paste0("imagine: ", nrow(result)))
-          # print(result)
+          # Store successful page_id
+          new_tried_rows <- bind_rows(new_tried_rows, tibble(ds = ds, cntry = cntry, tf = time, page_id = internal$page_id))
           
           results[[length(results) + 1]] <- result  # Store successful result
         }
         
+        # Save new records to the tracking file
+        if (nrow(new_tried_rows) > 0) {
+          if (file.exists(tried_pages_file)) {
+            write_csv(new_tried_rows, tried_pages_file, append = TRUE)
+          } else {
+            write_csv(new_tried_rows, tried_pages_file)
+          }
+        }
         
-        results <<- results
-        # Bind results with `mutate_all(as.character)` to avoid inconsistent types
+        # Return combined results
         if (length(results) > 0) {
-          final_result <- bind_rows(results) %>% mutate_all(as.character)        
-          
-          
+          final_result <- bind_rows(results) %>% mutate_all(as.character)
           return(final_result)
         } else {
           return(tibble())  # Return empty tibble if no data
