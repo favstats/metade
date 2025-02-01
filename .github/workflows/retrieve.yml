@@ -228,72 +228,66 @@ jobs:
               EXIT_CODE=$?
   
   
-              # 🔄 **Check if VPN Rotation is Needed**
-              if [ -f "status.txt" ] && grep -q "VPN_ROTATION_NEEDED" "status.txt"; then
-                echo "🔄 VPN rotation required based on status.txt"
+              # 🔄 **VPN Rotation after Running get_audiences.R**
+              echo "🔄 Rotating VPN after running get_audiences.R..."
+  
+              while true; do
+                RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
+                echo "🌍 Connecting to: $RANDOM_COUNTRY"
               
-                # 🔄 **VPN Rotation after Running get_audiences.R**
-                echo "🔄 Rotating VPN after running get_audiences.R..."
-                
-                while true; do
-                  RANDOM_COUNTRY=${COUNTRIES[$RANDOM % ${#COUNTRIES[@]}]}
-                  echo "🌍 Connecting to: $RANDOM_COUNTRY"
-                
-                  # Store previous IP before switching VPN
-                  PREV_IP=$(docker exec r-dev curl -s ifconfig.me || echo "UNKNOWN")
-                  echo "🔎 Previous IP: $PREV_IP"
-                
-                  # Disconnect and force a reset, but handle case where it's already disconnected
-                  docker exec nordvpn nordvpn disconnect || echo "No active connection."
-                  sleep 5
-                
-                  # Attempt to connect, retrying up to 100 times if connection fails
-                  for attempt in {1..100}; do
-                    echo "🔄 Attempting to connect to: $RANDOM_COUNTRY (Attempt $attempt/100)"
-                    set +e  # Disable immediate exit on error
-                    CONNECT_OUTPUT=$(docker exec nordvpn nordvpn connect "$RANDOM_COUNTRY" 2>&1)
-                    EXIT_CODE=$?  # Capture exit code
-                    set -e  # Re-enable immediate exit on error                  
-                    echo "Past Connection Attempt. Now What?"
+                # Store previous IP before switching VPN
+                PREV_IP=$(docker exec r-dev curl -s ifconfig.me || echo "UNKNOWN")
+                echo "🔎 Previous IP: $PREV_IP"
               
-                    if echo "$CONNECT_OUTPUT" | grep -q "Whoops!"; then
-                      echo "❌ VPN Connection Failed: $CONNECT_OUTPUT"
-                      sleep $((5**$attempt))  # Exponential backoff before retrying
-                    else
-                      echo "✅ No 'Whoops!' error detected. Sleeping for 10 seconds..."
-                      sleep 10  # Give it time to stabilize
-                      
-                      echo "🔍 Checking if VPN is actually connected..."
-                      # Check if VPN is actually connected
-                      VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
-                      echo "VPN Status Output: $VPN_STATUS"
-                
-                      if echo "$VPN_STATUS" | grep -q "Connected"; then
-                        # Check if IP has actually changed
-                        NEW_IP=$(docker exec r-dev curl -s ifconfig.me || echo "UNKNOWN")
-                        echo "🔎 New IP: $NEW_IP"
-                
-                        if [ "$NEW_IP" != "$PREV_IP" ] && [ "$NEW_IP" != "UNKNOWN" ]; then
-                          echo "✅ VPN Rotation Successful! New IP: $NEW_IP"
-                          break 2  # Exit both retry loop and main loop
-                        else
-                          echo "❌ VPN IP did not change. Trying another country..."
-                          break  # Exit attempt loop and try a new country
-                        fi
+                # Disconnect and force a reset, but handle case where it's already disconnected
+                docker exec nordvpn nordvpn disconnect || echo "No active connection."
+                sleep 5
+              
+                # Attempt to connect, retrying up to 100 times if connection fails
+                for attempt in {1..100}; do
+                  echo "🔄 Attempting to connect to: $RANDOM_COUNTRY (Attempt $attempt/100)"
+                  set +e  # Disable immediate exit on error
+                  CONNECT_OUTPUT=$(docker exec nordvpn nordvpn connect "$RANDOM_COUNTRY" 2>&1)
+                  EXIT_CODE=$?  # Capture exit code
+                  set -e  # Re-enable immediate exit on error                  
+                  echo "Past Connection Attempt. Now What?"
+
+                  if echo "$CONNECT_OUTPUT" | grep -q "Whoops!"; then
+                    echo "❌ VPN Connection Failed: $CONNECT_OUTPUT"
+                    sleep $((5**$attempt))  # Wait before retrying
+                  else
+                    echo "No _Whoops?_ Sleeping for 10..."
+
+                    sleep 10  # Give it time to stabilize
+                    
+                    echo "Check if VPN is actually connected"
+                    # Check if VPN is actually connected
+                    echo "❌ VPN Connection Failed: $CONNECT_OUTPUT"
+                    VPN_STATUS=$(docker exec nordvpn nordvpn status 2>&1 || echo "Error")
+                    echo "VPN Status Output: $VPN_STATUS"
+              
+                    if echo "$VPN_STATUS" | grep -q "Connected"; then
+                      # Check if IP has actually changed
+                      NEW_IP=$(docker exec r-dev curl -s ifconfig.me || echo "UNKNOWN")
+                      echo "🔎 New IP: $NEW_IP"
+              
+                      if [ "$NEW_IP" != "$PREV_IP" ] && [ "$NEW_IP" != "UNKNOWN" ]; then
+                        echo "✅ VPN Rotation Successful! New IP: $NEW_IP"
+                        break 2  # Exit both retry loop and main loop
+                      else
+                        echo "❌ VPN IP did not change. Trying another country..."
+                        break  # Exit attempt loop and try a new country
                       fi
                     fi
-                
-                    # If all 100 attempts fail, try a completely new country
-                    if [ "$attempt" -eq 100 ]; then
-                      echo "🚨 Failed to connect after 100 attempts. Trying a different country..."
-                      break  # Exit inner loop and select a new VPN server
-                    fi
-                  done  # VPN retry loop ends
-                done  # VPN rotation loop ends
+                  fi
               
-              else
-                echo "✅ VPN rotation is not required. Skipping VPN switch."
-              fi
+                  # If all 100 attempts fail, try a completely new country
+                  if [ "$attempt" -eq 100 ]; then
+                    echo "🚨 Failed to connect after 100 attempts. Trying a different country..."
+                    break  # Exit inner loop and select a new VPN server
+                  fi
+                done  # VPN retry loop ends
+              done  # VPN rotation loop ends
   
 
               echo "🔄 Completed one iteration. Restarting VPN change + get_audiences.R..."
