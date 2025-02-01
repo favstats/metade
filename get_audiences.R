@@ -783,7 +783,7 @@ if(skip){
       
       the_result <- tibble(cntry = the_cntry, the_ds = latest_ds, the_tf = tf, should_continue)
       
-      save_csv(the_result, file = "the_result.csv")      
+      save_csv(the_result, path = "the_result.csv")      
       
       should_continue <- ifelse(should_continue, "✅ Yes", "❌ No")
       
