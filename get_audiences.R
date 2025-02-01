@@ -36,11 +36,6 @@ full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/mai
 params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry) %>% 
   filter(the_cntry %in% outcome)
 
-try({
-  the_result <- read_csv("the_result.csv")
-  print(the_result)
-})
-
 skip <- F
 if(nrow(params)==0) skip <- T
 
@@ -49,6 +44,13 @@ if(skip){
 } else {
   # Loop over each (timeframe, country) pair
   for (i in seq_len(nrow(params))) {
+    
+    
+    try({
+      the_result <- read_csv("the_result.csv")
+      print(the_result)
+    })
+    
     
     tf <- params$tf[i]
     the_cntry <- params$the_cntry[i]
