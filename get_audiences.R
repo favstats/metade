@@ -10,24 +10,24 @@ tf_values <- c("7", "30", "90")
 eu_countries <- c("AT", "BE", "BG", "CY", "CZ", "DK", "EE", "ES", "FI", 
                   "FR", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", 
                   "PL", "PT", "RO", "SE", "SI", "SK", "NZ",  "MX",
-                  "CA", "AU", "US", "DE") %>% sample(31)
+                  "CA", "AU", "US", "NL") %>% sample(31)
 
 outcome <- commandArgs(trailingOnly = TRUE)
 
 print(outcome)
 
-outcome <- outcome %>% 
-  str_split(" ") %>% 
-  unlist() %>% 
-  str_trim()
-
-print(outcome)
+# outcome <- outcome %>% 
+#   str_split(" ") %>% 
+#   unlist() %>% 
+#   str_trim()
+# 
+# print(outcome)
 
 
 full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/main/cntry_list.rds") %>%
   rename(iso2c = iso2, country = cntry) %>%
   sample_n(n()) %>% 
-  mutate(iso2c = fct_relevel(iso2c, c("NL",eu_countries))) %>% 
+  mutate(iso2c = fct_relevel(iso2c, c("DE",eu_countries))) %>% 
   arrange(iso2c) 
 
 
