@@ -1,6 +1,7 @@
 library(tidyverse)
 
 writeLines("INIT", "status.txt")  # Save status
+source("https://raw.githubusercontent.com/favstats/appendornot/refs/heads/master/R/save.R")
 
 # Define time frame values
 tf_values <- c("7", "30", "90")
@@ -26,6 +27,10 @@ full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/mai
 # Create all combinations of TF and countries
 params <- crossing(tf = tf_values, the_cntry = full_cntry_list$iso2c) %>% arrange(the_cntry) %>% 
   filter(the_cntry == outcome)
+
+try({
+  the_result <- read_csv("the_result.csv")
+})
 
 skip <- F
 if(nrow(params)==0) skip <- T
@@ -210,6 +215,18 @@ if(skip){
         
       })
       
+      if(exists("the_result")){
+        status <- the_result %>% 
+          filter(the_ds == latest_ds) %>% 
+          filter(cntry == the_cntry) %>% 
+          filter(the_tf == tf)        
+      } else {
+        status <- tibble(should_continue = TRUE)
+      }
+      
+      if(!status$should_continue){
+        break
+      }
       
       if (!exists("latest_ds")) {
         latest_ds <- "2023-01-01"
@@ -763,6 +780,9 @@ if(skip){
         print(glue::glue("Status for timeframe {tf}: no_changes"))
       }
       
+      the_result <- tibble(cntry = the_cntry, the_ds = latest_ds, the_tf = tf, should_continue)
+      
+      save_csv(the_result, file = "the_result.csv")      
       
       should_continue <- ifelse(should_continue, "✅ Yes", "❌ No")
       
@@ -782,6 +802,8 @@ if(skip){
         "   \t\t📌 *Continue Today:* {should_continue}\n",
         "   \t\t💰 *Source:* local"
       )
+      
+
       
       # Construct the full message
       the_message <- glue::glue(

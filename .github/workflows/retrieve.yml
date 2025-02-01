@@ -48,6 +48,14 @@ jobs:
       matrix:
         group:
           - { name: "Western-Europe", index: 0 }
+          # - { name: "Americas", index: 1 }
+          # - { name: "Asia-Pacific", index: 2 }
+          # - { name: "Eastern-Europe", index: 3 }
+          # - { name: "Middle-East", index: 4 }
+          # - { name: "Central-Asia", index: 5 }
+          # - { name: "Southern-Africa", index: 6 }
+          # - { name: "Western-Africa", index: 7 }
+          # - { name: "Caribbean", index: 8 }
           
     env:
       GITHUB_PAT: ${{ secrets.GH_PAT }}      
