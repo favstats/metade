@@ -256,9 +256,11 @@ if(skip){
         status <- tibble(should_continue = TRUE)
       }
       
-      if(!status$should_continue){
-        print("ABBRUCH: This DS already passed a couple of times.")
-        break
+      if(nrow(status)!=0){
+        if(!status$should_continue){
+          print("ABBRUCH: This DS already passed a couple of times.")
+          break
+        }
       }
       
       if (!exists("latest_ds")) {
