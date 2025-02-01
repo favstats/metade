@@ -812,14 +812,14 @@ if(skip){
       
       # 🛑 Decision: Should the workflow continue?
       if (page_ids_in_togetstuff == nrow(togetstuff) | new_rows == 0) {
-        should_continue <- update_workflow_schedule(F)
+        should_continue <- F
         reason <- if (page_ids_in_togetstuff == nrow(togetstuff)) {
           "🔴 All required Page IDs were already retrieved, nothing new to check."
         } else {
           "🔴 No new Page IDs were added in this run, no updates needed."
         }
       } else {
-        should_continue <- update_workflow_schedule(T)
+        should_continue <- T
         reason <- if (new_rows > 0) {
           "🟢 New Page IDs were added, requiring additional runs."
         } else {
