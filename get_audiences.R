@@ -23,12 +23,23 @@ print(outcome)
 # 
 # print(outcome)
 
+priority_or_not <- sample(c(0,1,1), 1)
 
-full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/main/cntry_list.rds") %>%
-  rename(iso2c = iso2, country = cntry) %>%
-  sample_n(n()) %>% 
-  mutate(iso2c = fct_relevel(iso2c, c("DE",eu_countries))) %>% 
-  arrange(iso2c) 
+if(priority_or_not== 1){
+  full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/main/cntry_list.rds") %>%
+    rename(iso2c = iso2, country = cntry) %>%
+    sample_n(n()) %>% 
+    mutate(iso2c = fct_relevel(iso2c, c("DE",eu_countries))) %>% 
+    arrange(iso2c) 
+} else {
+  
+  full_cntry_list <- read_rds("https://github.com/favstats/meta_ad_reports/raw/main/cntry_list.rds") %>%
+    rename(iso2c = iso2, country = cntry) %>%
+    arrange(desc(iso2c)) %>% 
+    arrange(iso2c)  
+}
+
+
 
 try({
   the_result <- read_csv("the_result.csv")
