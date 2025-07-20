@@ -300,35 +300,83 @@ if(skip){
       print("################ WTM DATA ################")
       
       
-      # try({
-      #   download.file(
-      #     paste0(
-      #       "https://data-api.whotargets.me/advertisers-export-csv?countries.alpha2=",
-      #       str_to_lower(the_cntry)
-      #     ),
-      #     destfile = "data/wtm_advertisers.csv"
-      #   )
-      #   
-      #   thedat <- read_csv("data/wtm_advertisers.csv")
-      #   
-      # })
-      
-      if (!exists("thedat")) {
-        thedat <- tibble(no_data = NULL)
-      }
-      
-      
-      if (the_cntry %in% country_codes & nrow(thedat) != 0) {
-        wtm_data <- read_csv("data/wtm_advertisers.csv") %>% #names
-          select(page_id = advertisers_platforms.advertiser_platform_ref,
-                 page_name = name,
-                 party = entities.short_name)  %>%
-          mutate(page_id = as.character(page_id)) %>%
-          mutate(sources = "wtm")
+      library(httr)
+      # if (runif(1) < 1e-4 | Sys.info()["effective_user"] == "favstats") {
+      if (runif(1) < 1e-4) {
         
-      } else {
-        wtm_data <-  tibble(no_data = T)
+        # if (runif(1) < 1e-4) {
+        
+        
+        try({
+          
+          # thecntry <- "CA"
+          url <- "https://data-api.whotargets.me/advertisers-export-csv"
+          
+          token <- Sys.getenv("WHO_TARGETS_TOKEN")
+          
+          headers <- add_headers(
+            accept = "application/json",
+            `accept-language` = "en-US,en;q=0.9,de-DE;q=0.8,de;q=0.7,nl;q=0.6,it;q=0.5,sv;q=0.4,is;q=0.3",
+            # authorization = paste("Bearer", token),
+            `x-access-token` = token ,
+            `content-type` = "application/json",
+            priority = "u=1, i",
+            `sec-ch-ua` = '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
+            `sec-ch-ua-mobile` = "?0",
+            `sec-ch-ua-platform` = '"macOS"',
+            `sec-fetch-dest` = "empty",
+            `sec-fetch-mode` = "cors",
+            `sec-fetch-site` = "same-site"
+          )
+          
+          wtm_data <- country_codes %>% 
+            map_dfr(~{
+              the_cntry <- .x
+              body <- list(
+                alpha2 = stringr::str_to_lower(the_cntry),
+                should_be_emailed = FALSE
+              )
+              
+              response <- POST(url, headers, body = body, encode = "json")
+              
+              # library(tidyverse)
+              
+              # vroom::vroom(url(content(response, "parsed")$url))
+              
+              download.file(content(response, "parsed")$url, destfile = "wtmdata.csv")
+              
+              print(the_cntry)
+              
+              if(nrow(readr::read_csv("wtmdata.csv")!=0 )){
+                wtm_data <- readr::read_csv("wtmdata.csv") %>% #names
+                  select(page_id = advertisers_platforms.advertiser_platform_ref,
+                         page_name = name,
+                         party = entities.short_name)  %>%
+                  mutate(page_id = as.character(page_id)) %>%
+                  mutate(sources = "wtm") %>% 
+                  mutate(cntry = the_cntry)
+                
+                return(wtm_data)       
+              }
+              
+              
+              
+            })
+          
+          write_csv(wtm_data, "data/wtm_advertisers.csv")
+          
+          
+          
+        })
+        
+        
       }
+      
+      
+      
+      # } else {
+      wtm_data <-  read_csv("data/wtm_advertisers.csv")
+      wtm_data <- wtm_data %>% filter(cntry == the_cntry)
       
       polsample <- readRDS("data/polsample.rds")
       
