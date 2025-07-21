@@ -375,8 +375,10 @@ if(skip){
       
       
       # } else {
-      wtm_data <-  read_csv("data/wtm_advertisers.csv")
-      wtm_data <- wtm_data %>% filter(cntry == the_cntry)
+      wtm_data <-  readr::read_csv("data/wtm_advertisers.csv")
+      wtm_data <- wtm_data %>% 
+        # mutate(cntry = stringr::str_to_upper(countries.alpha2)) %>% 
+        filter(cntry == the_cntry)
       
       polsample <- readRDS("data/polsample.rds")
       
