@@ -375,7 +375,7 @@ if(skip){
       
       
       # } else {
-      wtm_data <-  readr::read_csv("data/wtm_advertisers.csv")
+      wtm_data <-  readr::read_csv("https://github.com/favstats/meta_ad_targeting/raw/refs/heads/main/data/wtm_advertisers.csv")
       wtm_data <- wtm_data %>% 
         # mutate(cntry = stringr::str_to_upper(countries.alpha2)) %>% 
         filter(cntry == the_cntry)

@@ -1298,7 +1298,7 @@ get_report_db <- function(the_cntry, timeframe, ds, verbose = FALSE) {
   
   # Construct the URL
   url <- paste0(
-    "https://github.com/favstats/meta_ad_reports/releases/download/",
+    "https://github.com/favstats/meta_ad_reports2/releases/download/",
     the_cntry, tf_string, "/",
     file_name
   )
