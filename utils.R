@@ -992,7 +992,7 @@ get_page_insights <- function(pageid, timeframe = "LAST_30_DAYS", lang = "en-GB"
 #' print(result)
 retrieve_reports_data <- function(country_code, 
                                   timeframe, 
-                                  base_url = "https://github.com/favstats/meta_ad_reports/releases/expanded_assets/") {
+                                  base_url = "https://github.com/favstats/meta_ad_reports2/releases/expanded_assets/") {
   # Validate inputs
   if (missing(country_code)) {
     stop("Parameter `country_code` is required.")
