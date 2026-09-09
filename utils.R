@@ -1004,6 +1004,11 @@ retrieve_reports_data <- function(country_code,
     stop("`timeframe` must be one of: 'yesterday', '7', '30', '90', or 'lifelong'.")
   }
   
+  # switch() dispatches by position when given a number, so a numeric 90 picks
+  # the 90th branch (there are five) and silently yields character(0) - which
+  # builds a suffix-less URL and 404s with a misleading "status code" message.
+  timeframe <- as.character(timeframe)
+
   # Map timeframe to the corresponding suffix
   timeframe_suffix <- switch(timeframe,
                              "yesterday" = "-yesterday",
